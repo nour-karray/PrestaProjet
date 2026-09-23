@@ -3,8 +3,8 @@ import type { WorkflowStep } from "@/components/ui";
 
 export const workflowLabels = [
   "Demande",
-  "Besoin",
   "Formateur",
+  "Besoin",
   "Accord de principe",
   "Programme",
   "Prix",
@@ -15,11 +15,11 @@ export const workflowLabels = [
 const statusStep: Record<TrainingCaseStatus, number> = {
   BROUILLON: 0,
   DEMANDE_RECUE: 1,
-  BESOIN_A_COMPLETER: 1,
-  BESOIN_COMPLETE: 2,
-  RECHERCHE_FORMATEUR: 2,
-  FORMATEUR_PROPOSE: 2,
-  FORMATEUR_ACCEPTE: 3,
+  RECHERCHE_FORMATEUR: 1,
+  FORMATEUR_PROPOSE: 1,
+  FORMATEUR_ACCEPTE: 2,
+  BESOIN_A_COMPLETER: 2,
+  BESOIN_COMPLETE: 3,
   PROGRAMME_EN_PREPARATION: 4,
   PROGRAMME_A_VALIDER: 4,
   PROGRAMME_VALIDE: 5,
@@ -33,12 +33,29 @@ const statusStep: Record<TrainingCaseStatus, number> = {
   ARCHIVE: 7,
 };
 
+const nextStatus: Partial<Record<TrainingCaseStatus, TrainingCaseStatus>> = {
+  BROUILLON: "DEMANDE_RECUE",
+  DEMANDE_RECUE: "RECHERCHE_FORMATEUR",
+  RECHERCHE_FORMATEUR: "FORMATEUR_PROPOSE",
+  FORMATEUR_PROPOSE: "FORMATEUR_ACCEPTE",
+  FORMATEUR_ACCEPTE: "BESOIN_A_COMPLETER",
+  BESOIN_COMPLETE: "PROGRAMME_EN_PREPARATION",
+};
+
+export function getNextTrainingCaseStatus(
+  status: TrainingCaseStatus,
+  hasTrainer: boolean,
+): TrainingCaseStatus | null {
+  if (status === "RECHERCHE_FORMATEUR" && !hasTrainer) return null;
+  return nextStatus[status] ?? null;
+}
+
 const lockReasons = [
   "",
   "Disponible après la création de la demande",
-  "Disponible après la complétion du besoin",
   "Disponible après la confirmation du formateur",
-  "Le programme sera disponible après l’accord du client.",
+  "Disponible après la validation du besoin",
+  "Le programme sera disponible après validation du besoin et accord de principe.",
   "Le prix sera disponible après validation du programme.",
   "Disponible après validation du prix",
   "Les documents seront disponibles après acceptation finale.",

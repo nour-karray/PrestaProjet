@@ -9,6 +9,7 @@ from app.models.training_case import (
 )
 from app.models.training_document import DocumentStatus, DocumentType, TrainingDocument
 from app.models.training_need import DeliveryMode, TrainingNeed
+from app.models.training_catalog import TrainingCatalogItem
 from app.models.training_pricing import TrainerCostInitializationMethod, TrainingPricing
 from app.models.training_program import (
     PedagogicalMethod,
@@ -30,6 +31,7 @@ __all__ = [
     "TrainingCase",
     "TrainingCaseCounter",
     "TrainingCaseStatus",
+    "TrainingCatalogItem",
     "TrainingNeed",
     "TrainingProgram",
     "TrainingProgramDay",

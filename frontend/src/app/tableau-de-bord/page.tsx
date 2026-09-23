@@ -39,7 +39,7 @@ export default function DashboardPage() {
   ];
   return (
     <AppShell>
-      <PageHeader eyebrow="Vue d’ensemble" title="Bonjour, Administrateur 👋" description="Votre nom connecté est affiché dans l’en-tête. Voici les dossiers qui demandent votre attention." action={<PrimaryLink href="/dossiers/nouveau">Nouveau dossier</PrimaryLink>} />
+      <PageHeader title="Bonjour, Administrateur" description="Votre nom connecté est affiché dans l’en-tête. Voici les dossiers qui demandent votre attention." action={<PrimaryLink href="/dossiers/nouveau">Nouveau dossier</PrimaryLink>} />
       <div className="stat-grid">
         {cards.map((card) => <article className="stat-card" key={card.label}><span className={`stat-icon stat-${card.tone}`}><Icon name={card.icon} /></span><div><p>{card.label}</p><strong>{card.value}</strong><Link href="/dossiers">Voir les dossiers <span>→</span></Link></div></article>)}
       </div>

@@ -8,21 +8,16 @@ from app.models.company import Company
 from app.models.training_case import ActivityLog, TrainingCase, TrainingCaseStatus
 from app.repositories.company import ContactRepository
 from app.repositories.training_case import ActivityRepository, TrainingCaseRepository
+from app.repositories.training_need import TrainingNeedRepository
 from app.schemas.training_case import TrainingCaseCreate, TrainingCaseUpdate
 
 ALLOWED_TRANSITIONS = {
     TrainingCaseStatus.BROUILLON: {TrainingCaseStatus.DEMANDE_RECUE},
-    TrainingCaseStatus.DEMANDE_RECUE: {
-        TrainingCaseStatus.BESOIN_A_COMPLETER,
-        TrainingCaseStatus.RECHERCHE_FORMATEUR,
-    },
-    TrainingCaseStatus.BESOIN_COMPLETE: {TrainingCaseStatus.RECHERCHE_FORMATEUR},
+    TrainingCaseStatus.DEMANDE_RECUE: {TrainingCaseStatus.RECHERCHE_FORMATEUR},
     TrainingCaseStatus.RECHERCHE_FORMATEUR: {TrainingCaseStatus.FORMATEUR_PROPOSE},
     TrainingCaseStatus.FORMATEUR_PROPOSE: {TrainingCaseStatus.FORMATEUR_ACCEPTE},
-    TrainingCaseStatus.FORMATEUR_ACCEPTE: {
-        TrainingCaseStatus.BESOIN_A_COMPLETER,
-        TrainingCaseStatus.PROGRAMME_EN_PREPARATION,
-    },
+    TrainingCaseStatus.FORMATEUR_ACCEPTE: {TrainingCaseStatus.BESOIN_A_COMPLETER},
+    TrainingCaseStatus.BESOIN_COMPLETE: {TrainingCaseStatus.PROGRAMME_EN_PREPARATION},
 }
 CANCELLABLE_STATUSES = {
     TrainingCaseStatus.BROUILLON,
@@ -108,6 +103,8 @@ class TrainingCaseService:
             and training_case.trainer_id is None
         ):
             raise ApiError(409, "TRAINER_REQUIRED", "Un formateur doit être affecté au dossier.")
+        if target == TrainingCaseStatus.PROGRAMME_EN_PREPARATION:
+            self._ensure_program_prerequisites(training_case)
         if target not in ALLOWED_TRANSITIONS.get(current, set()):
             raise ApiError(
                 409,
@@ -120,6 +117,41 @@ class TrainingCaseService:
         }.get(target, "CHANGEMENT_STATUT")
         self._set_status(training_case, target, administrator_id, action)
         return self.get(case_id)
+
+    def _ensure_program_prerequisites(self, training_case: TrainingCase) -> None:
+        if training_case.trainer_id is None:
+            raise ApiError(409, "TRAINER_REQUIRED", "Un formateur doit être affecté au dossier.")
+        need = TrainingNeedRepository(self.session).get_by_case(training_case.id)
+        if need is None:
+            raise ApiError(
+                409,
+                "TRAINING_NEED_REQUIRED",
+                "Le besoin client doit être créé avant de préparer le programme.",
+            )
+        if not need.is_validated:
+            raise ApiError(
+                409,
+                "TRAINING_NEED_NOT_VALIDATED",
+                "Le besoin client doit être validé avant de préparer le programme.",
+            )
+        required = (
+            need.level,
+            need.target_audience,
+            need.planned_days_count,
+            need.duration_hours,
+            need.delivery_mode,
+            need.location,
+            need.participant_count,
+            need.objectives,
+            need.desired_start_date,
+            need.desired_end_date,
+        )
+        if any(value is None or value == "" for value in required):
+            raise ApiError(
+                409,
+                "TRAINING_NEED_INCOMPLETE",
+                "Le besoin client est incomplet et ne permet pas de préparer le programme.",
+            )
 
     def cancel(self, case_id: UUID, administrator_id: UUID) -> TrainingCase:
         training_case = self.get(case_id)

@@ -22,7 +22,7 @@ import {
   updateTrainingCase,
 } from "@/features/training-cases/api";
 import { statusLabel } from "@/features/training-cases/status";
-import { buildWorkflowSteps } from "@/features/training-cases/workflow";
+import { buildWorkflowSteps, getNextTrainingCaseStatus } from "@/features/training-cases/workflow";
 import { ApiError } from "@/lib/api";
 import type { TrainingCaseStatus } from "@/types/training-case";
 
@@ -31,17 +31,24 @@ export default function TrainingCaseDetailPage() {
   const [editing, setEditing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const queryClient = useQueryClient();
-  const query = useQuery({ queryKey: ["training-case", id], queryFn: () => getTrainingCase(id) });
+  const query = useQuery({
+    queryKey: ["training-case", id],
+    queryFn: () => getTrainingCase(id),
+    refetchOnMount: "always",
+  });
   const activity = useQuery({
     queryKey: ["training-case-activity", id],
     queryFn: () => getTrainingCaseActivity(id),
     enabled: historyOpen,
   });
   const companies = useQuery({ queryKey: ["companies", "case-form"], queryFn: () => getCompanies({}) });
-  const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["training-case", id] });
-    queryClient.invalidateQueries({ queryKey: ["training-case-activity", id] });
-    queryClient.invalidateQueries({ queryKey: ["training-cases"] });
+  const refresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["training-case", id] }),
+      queryClient.invalidateQueries({ queryKey: ["training-case-activity", id] }),
+      queryClient.invalidateQueries({ queryKey: ["training-cases"] }),
+      queryClient.invalidateQueries({ queryKey: ["training-need", id] }),
+    ]);
   };
   const updateMutation = useMutation({ mutationFn: (values: Parameters<typeof updateTrainingCase>[1]) => updateTrainingCase(id, values), onSuccess: () => { refresh(); setEditing(false); } });
   const statusMutation = useMutation({ mutationFn: (status: TrainingCaseStatus) => changeTrainingCaseStatus(id, status), onSuccess: refresh });
@@ -51,20 +58,7 @@ export default function TrainingCaseDetailPage() {
   if (query.isPending) return <AppShell><LoadingState label="Chargement du dossier…" /></AppShell>;
   if (query.isError) return <AppShell><ErrorState label={query.error instanceof ApiError ? query.error.message : "Impossible de charger le dossier."} /></AppShell>;
   const item = query.data;
-  const nextStatus: TrainingCaseStatus | null =
-    item.status === "BROUILLON"
-      ? "DEMANDE_RECUE"
-      : item.status === "DEMANDE_RECUE"
-        ? "BESOIN_A_COMPLETER"
-        : item.status === "BESOIN_COMPLETE"
-          ? "RECHERCHE_FORMATEUR"
-          : item.status === "RECHERCHE_FORMATEUR" && item.trainer
-          ? "FORMATEUR_PROPOSE"
-          : item.status === "FORMATEUR_PROPOSE"
-            ? "FORMATEUR_ACCEPTE"
-            : item.status === "FORMATEUR_ACCEPTE"
-              ? "PROGRAMME_EN_PREPARATION"
-              : null;
+  const nextStatus = getNextTrainingCaseStatus(item.status, Boolean(item.trainer));
   const cancellable = ["BROUILLON", "DEMANDE_RECUE", "RECHERCHE_FORMATEUR"].includes(item.status);
   const archivable = ["ANNULE", "TERMINE"].includes(item.status);
   const actionError = statusMutation.error ?? cancelMutation.error ?? archiveMutation.error;
@@ -76,7 +70,7 @@ export default function TrainingCaseDetailPage() {
         <div className="mt-5 grid gap-5 border-t border-slate-100 pt-4 text-xs md:grid-cols-2"><div className="grid grid-cols-[110px_1fr] gap-2"><span className="text-slate-500">Entreprise</span><strong>{item.company.name}</strong><span className="text-slate-500">Contact</span><strong>{item.primary_contact?.full_name ?? "Aucun contact"}</strong></div><div className="grid grid-cols-[110px_1fr] gap-2"><span className="text-slate-500">Formation</span><strong>{item.theme}</strong><span className="text-slate-500">Créé le</span><strong>{new Date(item.created_at).toLocaleDateString("fr-FR")}</strong><span className="text-slate-500">Période</span><strong>{item.desired_start_date ?? "—"} → {item.desired_end_date ?? "—"}</strong></div></div>
       </header>
       <WorkflowStepper steps={buildWorkflowSteps(item.status, item.id)} />
-      {["BESOIN_COMPLETE", "RECHERCHE_FORMATEUR", "FORMATEUR_PROPOSE", "FORMATEUR_ACCEPTE"].includes(item.status) && (
+      {["RECHERCHE_FORMATEUR", "FORMATEUR_PROPOSE", "FORMATEUR_ACCEPTE", "BESOIN_A_COMPLETER", "BESOIN_COMPLETE"].includes(item.status) && (
         <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -94,7 +88,7 @@ export default function TrainingCaseDetailPage() {
       </section>}
       <section className="mt-7">
         <div className="mt-5 flex flex-wrap gap-3">
-          {nextStatus && <button onClick={() => statusMutation.mutate(nextStatus)} className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white">{nextStatus === "FORMATEUR_PROPOSE" ? "Marquer le formateur comme proposé" : nextStatus === "FORMATEUR_ACCEPTE" ? "Marquer le formateur comme accepté" : nextStatus === "BESOIN_A_COMPLETER" ? "Ouvrir le besoin client" : `Passer à « ${statusLabel(nextStatus)} »`}</button>}
+          {nextStatus && nextStatus !== "PROGRAMME_EN_PREPARATION" && <button onClick={() => statusMutation.mutate(nextStatus)} className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white">{nextStatus === "FORMATEUR_PROPOSE" ? "Marquer le formateur comme proposé" : nextStatus === "FORMATEUR_ACCEPTE" ? "Marquer le formateur comme accepté" : nextStatus === "BESOIN_A_COMPLETER" ? "Ouvrir le besoin client" : `Passer à « ${statusLabel(nextStatus)} »`}</button>}
           {cancellable && <button onClick={() => cancelMutation.mutate()} className="rounded-lg border border-red-300 px-4 py-2 font-semibold text-red-700">Annuler le dossier</button>}
           {archivable && <button onClick={() => archiveMutation.mutate()} className="rounded-lg bg-slate-700 px-4 py-2 font-semibold text-white">Archiver le dossier</button>}
         </div>

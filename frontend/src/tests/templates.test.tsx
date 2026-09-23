@@ -19,9 +19,10 @@ const administrator = {
 };
 
 describe("Templates Formation Center", () => {
-  it("affiche la navigation, le sous-menu actif et le compte dynamique", () => {
+  it("ouvre directement la liste depuis le lien Dossiers", () => {
     render(<AppSidebar pathname="/dossiers/nouveau" open collapsed={false} administrator={administrator} onClose={vi.fn()} onToggleCollapse={vi.fn()} />);
-    expect(screen.getByText("Créer un dossier")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Dossiers" })).toHaveAttribute("href", "/dossiers");
+    expect(screen.queryByText("Créer un dossier")).not.toBeInTheDocument();
     expect(screen.getByText("Amina Ben Salah")).toBeInTheDocument();
     expect(screen.queryByText("Rahma")).not.toBeInTheDocument();
   });
@@ -30,6 +31,7 @@ describe("Templates Formation Center", () => {
     render(<AppHeader administrator={administrator} onMenu={vi.fn()} onLogout={vi.fn()} loggingOut={false} />);
     expect(screen.getByText("Amina Ben Salah")).toBeInTheDocument();
     expect(screen.getByText("Administrateur")).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "Recherche globale" })).toBeInTheDocument();
   });
 
   it("compose un tableau et un succès sans données fictives", () => {

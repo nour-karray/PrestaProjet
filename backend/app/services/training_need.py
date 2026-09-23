@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -41,14 +41,16 @@ class TrainingNeedService:
                 "Un besoin client existe déjà pour ce dossier.",
             )
         self._validate_period(payload.desired_start_date, payload.desired_end_date)
+        self._validate_planned_period(
+            payload.desired_start_date,
+            payload.desired_end_date,
+            payload.planned_days_count,
+        )
         need = TrainingNeed(training_case_id=case_id, **payload.model_dump(mode="python"))
         try:
             self.needs.add(need)
             previous_status = training_case.status
-            if previous_status in {
-                TrainingCaseStatus.DEMANDE_RECUE.value,
-                TrainingCaseStatus.FORMATEUR_ACCEPTE.value,
-            }:
+            if previous_status == TrainingCaseStatus.FORMATEUR_ACCEPTE.value:
                 training_case.status = TrainingCaseStatus.BESOIN_A_COMPLETER.value
             self._log(
                 administrator_id,
@@ -90,6 +92,8 @@ class TrainingNeedService:
         start = changes.get("desired_start_date", need.desired_start_date)
         end = changes.get("desired_end_date", need.desired_end_date)
         self._validate_period(start, end)
+        planned_days_count = changes.get("planned_days_count", need.planned_days_count)
+        self._validate_planned_period(start, end, planned_days_count)
         for field, value in changes.items():
             setattr(need, field, value)
         self._log(
@@ -161,10 +165,9 @@ class TrainingNeedService:
 
     @staticmethod
     def _ensure_case_allows_need(training_case) -> None:
-        if False and training_case.trainer_id is None:
+        if training_case.trainer_id is None:
             raise ApiError(409, "TRAINER_REQUIRED", "Un formateur doit être affecté au dossier.")
         if training_case.status not in {
-            TrainingCaseStatus.DEMANDE_RECUE.value,
             TrainingCaseStatus.FORMATEUR_ACCEPTE.value,
             TrainingCaseStatus.BESOIN_A_COMPLETER.value,
         }:
@@ -183,24 +186,50 @@ class TrainingNeedService:
                 "La date de fin doit être postérieure ou égale à la date de début.",
             )
 
+    @staticmethod
+    def _validate_planned_period(start, end, planned_days_count) -> None:
+        if start is None or end is None or planned_days_count is None:
+            return
+        expected_end = start + timedelta(days=planned_days_count - 1)
+        if end != expected_end:
+            raise ApiError(
+                400,
+                "INVALID_TRAINING_NEED_PLANNED_PERIOD",
+                "La date de fin doit correspondre au début et au nombre de jours planifiés.",
+                {"expected_end_date": expected_end.isoformat()},
+            )
+
     def _validate_complete(self, need: TrainingNeed) -> None:
-        required = (
-            need.target_audience,
-            need.location,
-            need.participant_count,
-            need.delivery_mode,
-            need.duration_hours,
-            need.objectives,
-            need.desired_start_date,
-            need.desired_end_date,
-        )
-        if any(value is None or value == "" for value in required):
+        required = {
+            "target_audience": need.target_audience,
+            "level": need.level,
+            "location": need.location,
+            "participant_count": need.participant_count,
+            "delivery_mode": need.delivery_mode,
+            "duration_hours": need.duration_hours,
+            "planned_days_count": need.planned_days_count,
+            "objectives": need.objectives,
+            "desired_start_date": need.desired_start_date,
+            "desired_end_date": need.desired_end_date,
+        }
+        missing_fields = [
+            field
+            for field, value in required.items()
+            if value is None or (isinstance(value, str) and not value.strip())
+        ]
+        if missing_fields:
             raise ApiError(
                 400,
                 "TRAINING_NEED_INCOMPLETE",
                 "Tous les champs obligatoires du besoin doivent être renseignés.",
+                {"missing_fields": missing_fields},
             )
         self._validate_period(need.desired_start_date, need.desired_end_date)
+        self._validate_planned_period(
+            need.desired_start_date,
+            need.desired_end_date,
+            need.planned_days_count,
+        )
 
     def _log(
         self,

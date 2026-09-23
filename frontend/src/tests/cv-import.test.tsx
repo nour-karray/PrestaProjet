@@ -8,6 +8,7 @@ import { renderWithQueryClient } from "@/tests/test-utils";
 vi.mock("next/navigation", () => ({
   usePathname: () => "/formateurs/import-cv",
   useRouter: () => ({ replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams("case_id=case-1"),
 }));
 
 const uploadedCv = {
@@ -28,6 +29,14 @@ async function importCv() {
 }
 
 describe("Import et analyse du CV", () => {
+  it("permet de revenir à la sélection des formateurs du dossier", () => {
+    renderWithQueryClient(<ImportCvPage />);
+    expect(screen.getByRole("link", { name: "← Retour aux formateurs" })).toHaveAttribute(
+      "href",
+      "/formateurs?case_id=case-1",
+    );
+  });
+
   it("affiche les données seulement après analyse et impose la validation humaine", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify(uploadedCv), {

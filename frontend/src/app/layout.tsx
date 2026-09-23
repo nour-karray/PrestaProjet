@@ -4,8 +4,9 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Gestion Formations",
+  title: "PrestaCode",
   description: "Application de gestion des formations professionnelles",
+  icons: { icon: "/logo.svg" },
 };
 
 export default function RootLayout({
@@ -21,4 +22,3 @@ export default function RootLayout({
     </html>
   );
 }
-

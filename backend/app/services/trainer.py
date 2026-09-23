@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.ai.local_llm import LocalLLMClient, OllamaLocalLLMClient
+from app.core.config import settings
 from app.core.errors import ApiError
 from app.models.trainer import Trainer, TrainerCV, TrainerCVExtractionStatus
 from app.models.training_case import ActivityLog, TrainingCase
@@ -197,7 +198,11 @@ class TrainerCVExtractionService:
         self.session = session
         self.cvs = CVRepository(session)
         self.storage = CVStorageService()
-        self.llm_client = llm_client or OllamaLocalLLMClient()
+        self.llm_client = llm_client or OllamaLocalLLMClient(
+            model_name=settings.cv_llm_model,
+            max_tokens=settings.cv_llm_max_tokens,
+            keep_alive=settings.cv_llm_keep_alive,
+        )
         self.text_extractor = text_extractor or CVTextExtractor()
         self.ocr_extractor = ocr_extractor or OptionalOCRExtractor()
 

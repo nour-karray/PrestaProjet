@@ -1,12 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import {
   addProgramDay,
   addProgramItem,
-  createTrainingProgram,
   deleteProgramDay,
   deleteProgramItem,
   getTrainingProgram,
@@ -20,6 +20,7 @@ import {
   updateTrainingProgram,
   validateTrainingProgram,
 } from "@/features/training-programs/api";
+import { getTrainingNeed } from "@/features/training-needs/api";
 import { ApiError } from "@/lib/api";
 import {
   pedagogicalMethods,
@@ -64,7 +65,13 @@ export function TrainingProgramSection({
     queryFn: () => getTrainingProgram(caseId),
     retry: false,
   });
+  const needQuery = useQuery({
+    queryKey: ["training-need", caseId],
+    queryFn: () => getTrainingNeed(caseId),
+    retry: false,
+  });
   const notFound = query.error instanceof ApiError && query.error.status === 404;
+  const needNotFound = needQuery.error instanceof ApiError && needQuery.error.status === 404;
   const [metadata, setMetadata] = useState({
     title: caseTheme,
     general_objectives: "",
@@ -73,6 +80,7 @@ export function TrainingProgramSection({
   });
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [isCreatingItem, setIsCreatingItem] = useState(false);
   const [itemInput, setItemInput] = useState<ProgramItemInput>(emptyItem);
   const [returnReason, setReturnReason] = useState("");
   const [generatedNotice, setGeneratedNotice] = useState(false);
@@ -95,16 +103,6 @@ export function TrainingProgramSection({
   };
   const action = useMutation({
     mutationFn: async (operation: () => Promise<TrainingProgram>) => operation(),
-    onSuccess: apply,
-  });
-  const create = useMutation({
-    mutationFn: () =>
-      createTrainingProgram(caseId, {
-        title: caseTheme,
-        general_objectives: "",
-        prerequisites: "",
-        evaluation_method: "",
-      }),
     onSuccess: apply,
   });
   const generate = useMutation({
@@ -136,31 +134,35 @@ export function TrainingProgramSection({
     });
   }, [selectedItem]);
 
-  if (query.isPending) return <p role="status">Chargement du programme…</p>;
+  if (query.isPending || needQuery.isPending) return <p role="status">Chargement du programme…</p>;
   if (notFound) {
+    const needIsValid = Boolean(needQuery.data?.is_validated);
     return (
       <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="font-bold text-blue-800">8. Programme de formation</h2>
-        <p className="mt-2 text-sm text-slate-500">
-          Créez manuellement le programme ou demandez à Ollama un brouillon modifiable.
+        <h2 className="font-bold text-blue-800">Programme de formation</h2>
+        {!needIsValid && <p role="alert" className="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+          {needNotFound
+            ? "Incohérence du dossier : aucun besoin client n’est associé. Revenez à l’étape Besoin pour le compléter et le valider."
+            : "Le besoin client doit être complètement renseigné et validé avant de préparer le programme."}
+        </p>}
+        {needIsValid && <><p className="mt-2 text-sm text-slate-500">
+          Générez le programme avec Ollama à partir du besoin validé.
         </p>
         <p className="mt-3 rounded-md bg-blue-50 p-3 text-sm text-blue-800">
-          Ollama va proposer un programme modifiable à partir du besoin validé. Le programme ne
-          sera ni soumis ni validé automatiquement.
+          Ollama va proposer un programme modifiable à partir du besoin validé.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
-          <button type="button" onClick={() => {
-            if (window.confirm("Générer un brouillon de programme avec Ollama ? Vous pourrez modifier librement le résultat avant de le soumettre.")) generate.mutate();
-          }} disabled={create.isPending || generate.isPending} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-            {generate.isPending ? "Génération du programme en cours…" : "Générer un brouillon avec Ollama"}
-          </button>
-          <button type="button" onClick={() => create.mutate()} disabled={create.isPending || generate.isPending} className="rounded-md border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-700 disabled:opacity-50">
-            {create.isPending ? "Création…" : "Créer manuellement"}
+          <Link href={`/dossiers/${caseId}?step=3`} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">
+            Retour au besoin
+          </Link>
+          <button type="button" onClick={() => generate.mutate()} disabled={generate.isPending} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            {generate.isPending ? "Génération du programme en cours…" : "Générer le programme"}
           </button>
         </div>
         {generate.isPending && <p role="status" className="mt-3 text-sm text-blue-700">Génération du programme en cours…</p>}
-        {(create.error || generate.error) && <ErrorMessage error={create.error ?? generate.error} />}
+        {generate.error && <ErrorMessage error={generate.error} />}
         {generate.error && <button type="button" onClick={() => generate.mutate()} className="mt-2 text-sm font-semibold text-blue-700 underline">Réessayer</button>}
+        </>}
       </section>
     );
   }
@@ -169,16 +171,18 @@ export function TrainingProgramSection({
   }
 
   const difference = program.total_minutes - program.expected_total_minutes;
+  const titleWarning = titlesSeemDifferent(caseTheme, metadata.title);
   return (
-    <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="mx-auto mt-6 max-w-[1480px] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:p-7">
       {generatedNotice && (
-        <p role="status" className="mb-4 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-          Brouillon généré par Ollama. Vérifiez et modifiez le contenu avant de le soumettre.
+        <p role="status" className={`mb-4 rounded-md border p-3 text-sm ${program.pedagogical_warning ? "border-amber-200 bg-amber-50 text-amber-800" : "border-green-200 bg-green-50 text-green-800"}`}>
+          {program.pedagogical_warning ??
+            "Brouillon généré par Ollama. Vérifiez et modifiez le contenu avant de le soumettre."}
         </p>
       )}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-bold text-blue-800">8. Programme de formation</h2>
+          <h2 className="font-bold text-blue-800">Programme de formation</h2>
           <p className="mt-1 text-xs text-slate-500">
             {program.is_validated
               ? "Programme validé et verrouillé."
@@ -192,7 +196,7 @@ export function TrainingProgramSection({
         </span>
       </div>
 
-      <div className="mt-5 grid gap-3 rounded-md bg-slate-50 p-4 text-center sm:grid-cols-4">
+      <div className="mt-5 grid overflow-hidden rounded-xl border border-slate-200 bg-slate-50 sm:grid-cols-4 sm:divide-x sm:divide-slate-200">
         <Total label="Durée attendue" value={program.expected_total_minutes} />
         <Total label="Théorie" value={program.theory_total_minutes} />
         <Total label="Pratique" value={program.practice_total_minutes} />
@@ -203,7 +207,9 @@ export function TrainingProgramSection({
         />
       </div>
 
-      <fieldset disabled={!editable || action.isPending} className="mt-5 grid gap-4 md:grid-cols-2">
+      <section className="mt-6 rounded-xl border border-slate-200 bg-slate-50/50 p-4 lg:p-5" aria-labelledby="program-general-heading">
+      <h3 id="program-general-heading" className="text-base font-bold text-slate-900">Informations générales du programme</h3>
+      <fieldset disabled={!editable || action.isPending} className="mt-4 grid gap-4 md:grid-cols-2">
         <TextField
           label="Titre du programme"
           value={metadata.title}
@@ -231,27 +237,19 @@ export function TrainingProgramSection({
           }
         />
       </fieldset>
-      {editable && (
-        <div className="mt-3 flex justify-end">
-          <button
-            type="button"
-            onClick={() => action.mutate(() => updateTrainingProgram(caseId, metadata))}
-            className="rounded-md border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-700"
-          >
-            Enregistrer les informations
-          </button>
-        </div>
-      )}
+      {titleWarning && <p role="status" className="mt-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"><span aria-hidden="true">⚠</span>Le titre du programme semble différent du thème de la formation.</p>}
+      <ObjectivePreview value={metadata.general_objectives} />
+      </section>
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-[0.9fr_1.4fr]">
-        <div className="rounded-md border border-slate-200">
-          <div className="flex items-center justify-between border-b p-3">
-            <h3 className="font-semibold">Structure du programme</h3>
+      <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(330px,0.9fr)_minmax(460px,1.35fr)]">
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/40" aria-labelledby="program-structure-heading">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white p-4">
+            <div><h3 id="program-structure-heading" className="font-bold text-slate-900">Structure du programme</h3><p className="mt-1 text-xs text-slate-500">{program.days.length} journée{program.days.length > 1 ? "s" : ""}</p></div>
             {editable && (
               <button
                 type="button"
                 onClick={() => action.mutate(() => addProgramDay(caseId))}
-                className="rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white"
+                className="btn btn-primary px-3 py-2 text-xs"
               >
                 Ajouter une journée
               </button>
@@ -260,26 +258,27 @@ export function TrainingProgramSection({
           {program.days.length === 0 && (
             <p className="p-4 text-sm text-slate-500">Aucune journée.</p>
           )}
-          <div className="divide-y">
+          <div className="divide-y divide-slate-200">
             {program.days.map((day, dayIndex) => (
-              <div key={day.id} className="p-3">
+              <div key={day.id} className="p-4">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setSelectedDayId(day.id)}
-                    className="min-w-0 flex-1 text-left text-sm font-semibold"
+                    className="min-w-0 flex-1 rounded-md text-left text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500"
                   >
-                    Jour {day.position} · {day.title}
-                    <span className="ml-2 text-xs font-normal text-slate-500">
+                    Jour {day.position} — {day.title}
+                    <span className="ml-2 whitespace-nowrap text-xs font-semibold text-violet-700">
                       {formatMinutes(day.total_minutes)}
                     </span>
                   </button>
                   {editable && (
-                    <OrderButtons
+                    <ActionMenu
                       first={dayIndex === 0}
                       last={dayIndex === program.days.length - 1}
                       onUp={() => action.mutate(() => moveProgramDay(caseId, day.id, "up"))}
                       onDown={() => action.mutate(() => moveProgramDay(caseId, day.id, "down"))}
+                      onDelete={() => action.mutate(() => deleteProgramDay(caseId, day.id))}
                     />
                   )}
                 </div>
@@ -289,15 +288,21 @@ export function TrainingProgramSection({
                       key={item.id}
                       item={item}
                       editable={editable}
+                      selectedId={selectedItemId}
                       first={itemIndex === 0}
                       last={itemIndex === day.items.length - 1}
                       onSelect={(selected) => {
                         setSelectedDayId(day.id);
                         setSelectedItemId(selected.id);
+                        setIsCreatingItem(false);
                       }}
                       onMove={(selected, direction) =>
                         action.mutate(() => moveProgramItem(caseId, selected.id, direction))
                       }
+                      onDelete={(selected) => {
+                        action.mutate(() => deleteProgramItem(caseId, selected.id));
+                        if (selectedItemId === selected.id) setSelectedItemId(null);
+                      }}
                     />
                   ))}
                 </div>
@@ -320,32 +325,24 @@ export function TrainingProgramSection({
                       onClick={() => {
                         setSelectedItemId(null);
                         setItemInput({ ...emptyItem });
+                        setIsCreatingItem(true);
                       }}
                       className="text-xs font-semibold text-blue-700"
                     >
                       + Module
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => action.mutate(() => deleteProgramDay(caseId, day.id))}
-                      className="text-xs font-semibold text-red-700"
-                    >
-                      Supprimer
                     </button>
                   </div>
                 )}
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        <div className="rounded-md border border-slate-200 p-4">
-          {!selectedDayId && (
-            <p className="text-sm text-slate-500">
-              Sélectionnez une journée ou un module pour afficher l’éditeur.
-            </p>
+        <section className="min-h-[360px] rounded-xl border border-slate-200 bg-white p-5 shadow-sm" aria-label="Éditeur du module">
+          {(!selectedDayId || (!selectedItem && !isCreatingItem)) && (
+            <EmptyEditor />
           )}
-          {selectedDayId && editable && (
+          {selectedDayId && editable && (selectedItem || isCreatingItem) && (
             <ItemEditor
               value={itemInput}
               selected={selectedItem}
@@ -367,6 +364,7 @@ export function TrainingProgramSection({
                         item_type: "SUBMODULE",
                         parent_id: selectedItem.id,
                       });
+                      setIsCreatingItem(true);
                     }
                   : undefined
               }
@@ -376,13 +374,14 @@ export function TrainingProgramSection({
                       action.mutate(() => deleteProgramItem(caseId, selectedItem.id));
                       setSelectedItemId(null);
                       setItemInput({ ...emptyItem });
+                      setIsCreatingItem(false);
                     }
                   : undefined
               }
             />
           )}
           {selectedDayId && !editable && selectedItem && <ReadOnlyItem item={selectedItem} />}
-        </div>
+        </section>
       </div>
 
       {program.return_reason && !program.is_submitted && (
@@ -392,17 +391,10 @@ export function TrainingProgramSection({
       )}
       <div className="mt-5 flex flex-wrap justify-end gap-3">
         {editable && (
-          <button
-            type="button"
-            onClick={() => {
-              if (window.confirm("Soumettre ce programme pour validation ?")) {
-                action.mutate(() => submitTrainingProgram(caseId));
-              }
-            }}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
-          >
-            Soumettre pour validation
-          </button>
+          <>
+            <button type="button" onClick={() => action.mutate(() => updateTrainingProgram(caseId, metadata))} className="btn btn-secondary">Enregistrer le brouillon</button>
+            <button type="button" onClick={() => action.mutate(() => submitTrainingProgram(caseId))} className="btn btn-primary px-5">Soumettre pour validation</button>
+          </>
         )}
         {program.is_submitted && !program.is_validated && (
           <>
@@ -439,30 +431,40 @@ export function TrainingProgramSection({
 function ProgramTreeItem({
   item,
   editable,
+  selectedId,
   first,
   last,
   onSelect,
   onMove,
+  onDelete,
 }: {
   item: TrainingProgramItem;
   editable: boolean;
+  selectedId: string | null;
   first: boolean;
   last: boolean;
   onSelect: (item: TrainingProgramItem) => void;
   onMove: (item: TrainingProgramItem, direction: "up" | "down") => void;
+  onDelete: (item: TrainingProgramItem) => void;
 }) {
+  const selected = selectedId === item.id;
   return (
     <div>
-      <div className="flex items-center gap-2 rounded px-2 py-1 hover:bg-slate-50">
-        <button type="button" onClick={() => onSelect(item)} className="min-w-0 flex-1 text-left text-xs">
-          {item.position}. {item.title} · {formatMinutes(item.total_minutes)}
+      <div className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 transition ${selected ? "border-violet-300 bg-violet-50 shadow-sm" : "border-transparent bg-white hover:border-slate-200 hover:bg-slate-50"}`}>
+        <span aria-hidden="true" className="cursor-grab select-none text-slate-400">≡</span>
+        <button type="button" aria-label={item.title} onClick={() => onSelect(item)} aria-pressed={selected} className="min-w-0 flex-1 text-left text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500">
+          <span className="block truncate">{item.title}</span>
+          <span className="mt-1 block text-[10px] font-normal text-slate-500">Théorie {formatMinutes(item.theory_total_minutes)} · Pratique {formatMinutes(item.practice_total_minutes)}</span>
+          {conceptsFromContent(item.content).length > 0 && <span className="mt-1 block truncate text-[10px] font-normal text-slate-500">{conceptsFromContent(item.content).slice(0, 2).join(" · ")}</span>}
         </button>
+        <span className="whitespace-nowrap text-[11px] font-medium text-slate-500">{formatMinutes(item.total_minutes)}</span>
         {editable && (
-          <OrderButtons
+          <ActionMenu
             first={first}
             last={last}
             onUp={() => onMove(item, "up")}
             onDown={() => onMove(item, "down")}
+            onDelete={() => onDelete(item)}
           />
         )}
       </div>
@@ -472,10 +474,12 @@ function ProgramTreeItem({
             key={child.id}
             item={child}
             editable={editable}
+            selectedId={selectedId}
             first={index === 0}
             last={index === item.children.length - 1}
             onSelect={onSelect}
             onMove={onMove}
+            onDelete={onDelete}
           />
         ))}
       </div>
@@ -501,15 +505,15 @@ function ItemEditor({
   const hasChildren = Boolean(selected?.children.length);
   return (
     <>
-      <h3 className="font-semibold">{selected ? "Modifier l’élément" : "Ajouter un élément"}</h3>
+      <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-violet-600">Éditeur du module</p><h3 className="mt-1 text-lg font-bold text-slate-900">{selected ? selected.title : "Nouveau module"}</h3></div><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{value.item_type === "MODULE" ? "Module" : "Sous-module"}</span></div>
       <div className="mt-4 grid gap-4">
         <TextField
-          label="Titre"
+          label="Titre du module"
           value={value.title}
           onChange={(title) => onChange({ ...value, title })}
         />
         <TextArea
-          label="Contenu"
+          label="Concepts / contenus"
           value={value.content ?? ""}
           onChange={(content) => onChange({ ...value, content })}
         />
@@ -527,8 +531,8 @@ function ItemEditor({
             onChange={(practice_minutes) => onChange({ ...value, practice_minutes })}
           />
         </div>
-        <fieldset>
-          <legend className="text-xs font-semibold">Méthodes pédagogiques</legend>
+        <fieldset className="rounded-lg border border-slate-200 p-3">
+          <legend className="px-1 text-xs font-semibold">Méthodes et moyens pédagogiques</legend>
           <div className="mt-2 flex flex-wrap gap-2">
             {pedagogicalMethods.map((method) => (
               <label key={method} className="rounded bg-slate-100 px-2 py-1 text-xs">
@@ -550,6 +554,7 @@ function ItemEditor({
             ))}
           </div>
         </fieldset>
+        <div className="flex items-center justify-between rounded-lg bg-violet-50 px-4 py-3 text-sm"><span className="font-medium text-slate-600">Durée totale calculée</span><strong className="text-base text-violet-700">{formatMinutes(value.theory_minutes + value.practice_minutes)}</strong></div>
       </div>
       <div className="mt-4 flex flex-wrap justify-end gap-2">
         {onDelete && (
@@ -579,10 +584,12 @@ function ItemEditor({
 }
 
 function ReadOnlyItem({ item }: { item: TrainingProgramItem }) {
+  const concepts = conceptsFromContent(item.content);
   return (
     <div>
       <h3 className="font-semibold">{item.title}</h3>
-      <p className="mt-3 whitespace-pre-wrap text-sm text-slate-700">{item.content}</p>
+      {concepts.length > 0 && <ul className="mt-3 grid gap-1.5 text-sm text-slate-700">{concepts.map((concept, index) => <li key={`${concept}-${index}`} className="flex gap-2"><span className="text-violet-600">•</span>{concept}</li>)}</ul>}
+      {item.methods.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{item.methods.map((method) => <span key={method} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700">{methodLabels[method]}</span>)}</div>}
       <p className="mt-3 text-xs text-slate-500">
         Théorie {formatMinutes(item.theory_total_minutes)} · Pratique{" "}
         {formatMinutes(item.practice_total_minutes)}
@@ -613,34 +620,59 @@ function Total({
   className?: string;
 }) {
   return (
-    <div>
-      <p className="text-xs text-slate-500">{label}</p>
-      <strong className={className}>{formatMinutes(value)}</strong>
+    <div className="px-4 py-3 text-center">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <strong className={`mt-1 block text-xl text-slate-900 ${className}`}>{formatMinutes(value)}</strong>
     </div>
   );
 }
 
-function OrderButtons({
+function ActionMenu({
   first,
   last,
   onUp,
   onDown,
+  onDelete,
 }: {
   first: boolean;
   last: boolean;
   onUp: () => void;
   onDown: () => void;
+  onDelete: () => void;
 }) {
   return (
-    <span className="flex gap-1">
-      <button type="button" aria-label="Monter" disabled={first} onClick={onUp}>
-        ↑
-      </button>
-      <button type="button" aria-label="Descendre" disabled={last} onClick={onDown}>
-        ↓
-      </button>
-    </span>
+    <details className="relative">
+      <summary aria-label="Actions" className="grid size-7 cursor-pointer list-none place-items-center rounded-md text-base font-bold text-slate-500 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-500">⋯</summary>
+      <div className="absolute right-0 z-20 mt-1 min-w-32 rounded-lg border border-slate-200 bg-white p-1 text-xs shadow-lg">
+        <button type="button" disabled={first} onClick={onUp} className="block w-full rounded px-3 py-2 text-left hover:bg-slate-50 disabled:opacity-40">Monter</button>
+        <button type="button" disabled={last} onClick={onDown} className="block w-full rounded px-3 py-2 text-left hover:bg-slate-50 disabled:opacity-40">Descendre</button>
+        <button type="button" onClick={onDelete} className="block w-full rounded px-3 py-2 text-left text-red-700 hover:bg-red-50">Supprimer</button>
+      </div>
+    </details>
   );
+}
+
+function EmptyEditor() {
+  return <div className="grid min-h-[320px] place-items-center text-center"><div><span aria-hidden="true" className="mx-auto grid size-14 place-items-center rounded-2xl bg-violet-50 text-2xl text-violet-600">▤</span><p className="mt-4 max-w-sm text-sm font-medium text-slate-600">Sélectionnez un module pour afficher et modifier son contenu.</p></div></div>;
+}
+
+function ObjectivePreview({ value }: { value: string }) {
+  const objectives = value.split(/\r?\n|;|•/).map((item) => item.trim()).filter(Boolean);
+  if (objectives.length < 2) return null;
+  return <div className="mt-4 rounded-lg bg-white p-3"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Aperçu des objectifs</p><ul className="mt-2 grid gap-1.5 text-sm text-slate-700 md:grid-cols-2">{objectives.map((objective, index) => <li key={`${objective}-${index}`} className="flex gap-2"><span className="text-violet-600">•</span><span>{objective}</span></li>)}</ul></div>;
+}
+
+function titlesSeemDifferent(theme: string, title: string): boolean {
+  const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr").replace(/[^a-z0-9]+/g, " ").trim();
+  const normalizedTheme = normalize(theme);
+  const normalizedTitle = normalize(title);
+  if (!normalizedTheme || !normalizedTitle) return false;
+  return !normalizedTitle.includes(normalizedTheme) && !normalizedTheme.includes(normalizedTitle);
+}
+
+function conceptsFromContent(content: string | null | undefined): string[] {
+  if (!content) return [];
+  return content.split(/[\r\n;]+/).map((value) => value.replace(/^[•\-\s]+/, "").trim()).filter(Boolean);
 }
 
 function TextField({

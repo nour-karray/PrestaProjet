@@ -156,6 +156,8 @@ class TrainingProgramResponse(BaseModel):
     practice_total_minutes: int
     total_minutes: int
     days: list[TrainingProgramDayResponse]
+    pedagogical_warning: str | None = None
+    pedagogical_correction_performed: bool = False
 
     @classmethod
     def from_model(

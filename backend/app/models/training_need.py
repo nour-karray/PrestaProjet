@@ -26,6 +26,13 @@ class DeliveryMode(StrEnum):
     HYBRIDE = "HYBRIDE"
 
 
+class TrainingNeedLevel(StrEnum):
+    BEGINNER = "BEGINNER"
+    INTERMEDIATE = "INTERMEDIATE"
+    ADVANCED = "ADVANCED"
+    EXPERT = "EXPERT"
+
+
 class TrainingNeed(Base):
     __tablename__ = "training_needs"
 
@@ -36,10 +43,12 @@ class TrainingNeed(Base):
         index=True,
     )
     target_audience: Mapped[str | None] = mapped_column(String(500))
+    level: Mapped[str | None] = mapped_column(String(20))
     location: Mapped[str | None] = mapped_column(String(300))
     participant_count: Mapped[int | None] = mapped_column(Integer)
     delivery_mode: Mapped[str | None] = mapped_column(String(20))
     duration_hours: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    planned_days_count: Mapped[int | None] = mapped_column(Integer)
     objectives: Mapped[str | None] = mapped_column(Text)
     desired_start_date: Mapped[date | None] = mapped_column(Date)
     desired_end_date: Mapped[date | None] = mapped_column(Date)
@@ -62,8 +71,16 @@ class TrainingNeed(Base):
             name="ck_training_needs_duration_hours_positive",
         ),
         CheckConstraint(
+            "planned_days_count IS NULL OR planned_days_count > 0",
+            name="ck_training_needs_planned_days_count_positive",
+        ),
+        CheckConstraint(
             "delivery_mode IS NULL OR delivery_mode IN ('PRESENTIEL','DISTANCIEL','HYBRIDE')",
             name="ck_training_needs_delivery_mode",
+        ),
+        CheckConstraint(
+            "level IS NULL OR level IN ('BEGINNER','INTERMEDIATE','ADVANCED','EXPERT')",
+            name="ck_training_needs_level",
         ),
         CheckConstraint(
             "desired_end_date IS NULL OR desired_start_date IS NULL "

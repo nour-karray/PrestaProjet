@@ -1,7 +1,7 @@
 import zipfile
 from io import BytesIO
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -65,6 +65,21 @@ def test_trainer_crud_archive_and_normalization(
     assert listed.status_code == 200
     assert listed.json()["total"] == 1
 
+    audit_trainer = client.post(
+        "/api/trainers",
+        json={"full_name": "Sonia Audit", "job_title": "Consultante Audit RH"},
+    )
+    assert audit_trainer.status_code == 201
+    specialized = client.get("/api/trainers", params={"specialty": "Audit RH"})
+    assert specialized.status_code == 200
+    assert specialized.json()["total"] == 1
+    assert specialized.json()["items"][0]["full_name"] == "Sonia Audit"
+    narrowed = client.get(
+        "/api/trainers", params={"specialty": "Audit RH", "search": "Karim"}
+    )
+    assert narrowed.status_code == 200
+    assert narrowed.json()["total"] == 0
+
     updated = client.patch(f"/api/trainers/{trainer['id']}", json={"city": " Tunis "})
     assert updated.status_code == 200
     assert updated.json()["city"] == "Tunis"
@@ -74,7 +89,7 @@ def test_trainer_crud_archive_and_normalization(
     archived = client.delete(f"/api/trainers/{trainer['id']}")
     assert archived.status_code == 200
     assert archived.json()["is_active"] is False
-    assert client.get("/api/trainers").json()["total"] == 0
+    assert client.get("/api/trainers").json()["total"] == 1
     actions = list(db_session.scalars(select(ActivityLog.action)))
     assert "TrainerCreated" in actions
     assert "TrainerArchived" in actions
@@ -221,3 +236,38 @@ def test_completed_cv_requires_human_validation(
         json={"full_name": "Nouvelle valeur"},
     )
     assert repeated.status_code == 409
+
+
+def test_validated_trainer_exposes_and_opens_original_cv(
+    client: TestClient,
+    db_session: Session,
+    active_administrator: Administrator,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(settings, "cv_storage_dir", tmp_path / "cv")
+    login(client, active_administrator)
+    content = make_docx("CV AMIRA BOUZID")
+    upload = client.post(
+        "/api/trainer-cvs/upload",
+        files={"file": ("amira-bouzid.docx", BytesIO(content), DOCX_MIME)},
+    )
+    assert upload.status_code == 201
+    cv = db_session.get(TrainerCV, UUID(upload.json()["id"]))
+    assert cv is not None
+    cv.extraction_status = TrainerCVExtractionStatus.REVIEW_REQUIRED.value
+    db_session.commit()
+
+    validated = client.post(
+        f"/api/trainer-cvs/{upload.json()['id']}/validate",
+        json={"full_name": "AMIRA BOUZID"},
+    )
+    assert validated.status_code == 201
+    trainer_id = validated.json()["id"]
+    assert validated.json()["cv_id"] == upload.json()["id"]
+
+    opened = client.get(f"/api/trainers/{trainer_id}/cv")
+    assert opened.status_code == 200
+    assert opened.content == content
+    assert opened.headers["content-type"] == DOCX_MIME
+    assert "inline" in opened.headers["content-disposition"]

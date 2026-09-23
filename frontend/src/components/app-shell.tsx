@@ -13,7 +13,6 @@ type NavigationItem = {
   href: string;
   label: string;
   icon: Parameters<typeof Icon>[0]["name"];
-  children?: Array<{ href: string; label: string }>;
 };
 
 const navigation: Array<{ label: string; items: NavigationItem[] }> = [
@@ -24,7 +23,7 @@ const navigation: Array<{ label: string; items: NavigationItem[] }> = [
   {
     label: "Gestion",
     items: [
-      { href: "/dossiers", label: "Dossiers", icon: "folder" as const, children: [{ href: "/dossiers", label: "Liste des dossiers" }, { href: "/dossiers/nouveau", label: "Créer un dossier" }] },
+      { href: "/dossiers", label: "Dossiers", icon: "folder" as const },
       { href: "/entreprises", label: "Entreprises", icon: "building" as const },
       { href: "/formateurs", label: "Formateurs", icon: "users" as const },
     ],
@@ -50,12 +49,11 @@ export function AppSidebar({
   onClose: () => void;
   onToggleCollapse: () => void;
 }) {
-  const [dossiersOpen, setDossiersOpen] = useState(pathname.startsWith("/dossiers"));
   const name = administrator?.full_name || "Administrateur";
   const initials = name.split(/\s+/).filter(Boolean).map((part) => part[0]).slice(0, 2).join("").toUpperCase() || "A";
   return <aside className={`app-sidebar ${open ? "sidebar-open" : ""} ${collapsed ? "sidebar-collapsed" : ""}`}>
     <div className="sidebar-brand-row">
-      <Link href="/tableau-de-bord" className="brand" onClick={onClose}><span className="brand-mark"><Icon name="book" /></span><span>Formation<br />Center</span></Link>
+      <Link href="/tableau-de-bord" className="brand" onClick={onClose}><span className="brand-mark"><Icon name="book" /></span><span>PrestaCode<small>Gestion des formations</small></span></Link>
       <button type="button" aria-label={collapsed ? "Développer le menu" : "Réduire le menu"} onClick={onToggleCollapse}>{collapsed ? "»" : "«"}</button>
     </div>
     <nav aria-label="Navigation principale">
@@ -64,9 +62,7 @@ export function AppSidebar({
         return <div key={`${section.label}-${item.label}`} className="sidebar-nav-group">
           <div className={`sidebar-link-row ${active ? "active" : ""}`}>
             <Link href={item.href} onClick={onClose}><Icon name={item.icon} /><span>{item.label}</span></Link>
-            {item.children && !collapsed && <button type="button" aria-label={`${dossiersOpen ? "Fermer" : "Ouvrir"} le sous-menu Dossiers`} aria-expanded={dossiersOpen} onClick={() => setDossiersOpen((value) => !value)}>{dossiersOpen ? "⌄" : "›"}</button>}
           </div>
-          {item.children && dossiersOpen && !collapsed && <div className="sidebar-submenu">{item.children.map((child) => <Link key={child.href} href={child.href} className={pathname === child.href ? "active" : ""} onClick={onClose}>{child.label}</Link>)}</div>}
         </div>;
       })}</section>)}
     </nav>
@@ -89,6 +85,10 @@ export function AppHeader({
   const initials = name.split(/\s+/).filter(Boolean).map((part) => part[0]).slice(0, 2).join("").toUpperCase() || "A";
   return <header className="app-header">
     <button className="menu-trigger" type="button" aria-label="Ouvrir le menu" onClick={onMenu}><Icon name="menu" /></button>
+    <label className="header-search" aria-label="Recherche globale">
+      <Icon name="search" />
+      <input type="search" placeholder="Rechercher un dossier, une entreprise, un formateur…" />
+    </label>
     <button className="header-icon-button" type="button" aria-label="Notifications"><Icon name="bell" /></button>
     <div className="account"><span className="avatar">{initials}</span><span className="account-copy"><strong>{name}</strong><small>Administrateur</small></span><button type="button" className="logout-button" aria-label="Se déconnecter" title="Se déconnecter" disabled={loggingOut} onClick={onLogout}><Icon name="logout" /></button></div>
   </header>;

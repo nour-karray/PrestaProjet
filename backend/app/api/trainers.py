@@ -2,8 +2,11 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, File, Query, Response, UploadFile
+from fastapi.responses import FileResponse
 
 from app.api.deps import CurrentAdministrator, DbSession
+from app.core.errors import ApiError
+from app.models.trainer import Trainer
 from app.repositories.trainer import CVRepository, TrainerRepository
 from app.schemas.trainer import (
     CVListResponse,
@@ -20,18 +23,28 @@ from app.services.trainer import CVService, TrainerCVExtractionService, TrainerS
 router = APIRouter(prefix="/api", tags=["trainers"])
 
 
+def _trainer_response(session: DbSession, trainer: Trainer) -> TrainerResponse:
+    cv = CVRepository(session).get_latest_by_trainer(trainer.id)
+    return TrainerResponse.model_validate(trainer).model_copy(
+        update={"cv_id": cv.id if cv else None}
+    )
+
+
 @router.get("/trainers", response_model=TrainerListResponse)
 def list_trainers(
     session: DbSession,
     _: CurrentAdministrator,
     search: str | None = None,
+    specialty: str | None = None,
     include_inactive: bool = False,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> TrainerListResponse:
-    items, total = TrainerRepository(session).list(search, include_inactive, page, page_size)
+    items, total = TrainerRepository(session).list(
+        search, include_inactive, page, page_size, specialty=specialty
+    )
     return TrainerListResponse(
-        items=[TrainerResponse.model_validate(item) for item in items],
+        items=[_trainer_response(session, item) for item in items],
         total=total,
         page=page,
         page_size=page_size,
@@ -44,12 +57,34 @@ def create_trainer(
     session: DbSession,
     administrator: CurrentAdministrator,
 ) -> TrainerResponse:
-    return TrainerResponse.model_validate(TrainerService(session).create(payload, administrator.id))
+    return _trainer_response(session, TrainerService(session).create(payload, administrator.id))
 
 
 @router.get("/trainers/{trainer_id}", response_model=TrainerResponse)
 def get_trainer(trainer_id: UUID, session: DbSession, _: CurrentAdministrator) -> TrainerResponse:
-    return TrainerResponse.model_validate(TrainerService(session).get(trainer_id))
+    trainer = TrainerService(session).get(trainer_id)
+    return _trainer_response(session, trainer)
+
+
+@router.get("/trainers/{trainer_id}/cv", response_class=FileResponse)
+def open_trainer_cv(
+    trainer_id: UUID,
+    session: DbSession,
+    _: CurrentAdministrator,
+) -> FileResponse:
+    TrainerService(session).get(trainer_id)
+    cv = CVRepository(session).get_latest_by_trainer(trainer_id)
+    if cv is None:
+        raise ApiError(404, "TRAINER_CV_NOT_FOUND", "Aucun CV n’est associé à ce formateur.")
+    path = CVService(session).storage.get_path(cv.storage_filename)
+    if not path.is_file():
+        raise ApiError(404, "TRAINER_CV_FILE_NOT_FOUND", "Le fichier du CV est introuvable.")
+    return FileResponse(
+        path,
+        media_type=cv.mime_type,
+        filename=cv.original_filename,
+        content_disposition_type="inline",
+    )
 
 
 @router.patch("/trainers/{trainer_id}", response_model=TrainerResponse)
@@ -59,7 +94,7 @@ def update_trainer(
     session: DbSession,
     _: CurrentAdministrator,
 ) -> TrainerResponse:
-    return TrainerResponse.model_validate(TrainerService(session).update(trainer_id, payload))
+    return _trainer_response(session, TrainerService(session).update(trainer_id, payload))
 
 
 @router.delete("/trainers/{trainer_id}", response_model=TrainerResponse)
@@ -68,9 +103,7 @@ def archive_trainer(
     session: DbSession,
     administrator: CurrentAdministrator,
 ) -> TrainerResponse:
-    return TrainerResponse.model_validate(
-        TrainerService(session).archive(trainer_id, administrator.id)
-    )
+    return _trainer_response(session, TrainerService(session).archive(trainer_id, administrator.id))
 
 
 @router.get("/trainer-cvs", response_model=CVListResponse)
@@ -141,7 +174,7 @@ def validate_cv(
     administrator: CurrentAdministrator,
 ) -> TrainerResponse:
     trainer = CVService(session).validate(cv_id, payload, administrator.id)
-    return TrainerResponse.model_validate(trainer)
+    return _trainer_response(session, trainer)
 
 
 @router.post("/training-cases/{case_id}/trainer", response_model=TrainingCaseResponse)

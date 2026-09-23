@@ -38,7 +38,7 @@ export default function LoginPage() {
   const serverError = loginMutation.error instanceof ApiError ? loginMutation.error.message : loginMutation.error ? "Une erreur inattendue est survenue." : null;
 
   return <AuthLayout visual={<LoginVisual />}>
-    <div className="auth-brand"><span><Icon name="book" /></span><strong>Formation <em>Center</em></strong></div>
+    <div className="auth-brand"><span><Icon name="book" /></span><strong>Presta<em>Code</em></strong></div>
     <div className="auth-form-wrap">
       <h1>Bienvenue</h1>
       <p>Connectez-vous à votre espace pour continuer.</p>
@@ -50,7 +50,7 @@ export default function LoginPage() {
         <button type="submit" disabled={loginMutation.isPending} className="login-submit">{loginMutation.isPending ? "Connexion en cours…" : "Se connecter"}</button>
       </form>
       <p className="auth-security">Accès réservé aux utilisateurs autorisés</p>
-      <p className="auth-copyright">© {new Date().getFullYear()} Formation Center. Tous droits réservés.</p>
+      <p className="auth-copyright">© {new Date().getFullYear()} PrestaCode. Tous droits réservés.</p>
     </div>
   </AuthLayout>;
 }

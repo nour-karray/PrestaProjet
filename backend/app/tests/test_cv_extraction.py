@@ -1,11 +1,16 @@
+import json
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Lock
+from urllib.error import HTTPError
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.ai.local_llm import OllamaLocalLLMClient, SchemaT, parse_json_response
+from app.ai.local_llm import LLMHealth, OllamaLocalLLMClient, SchemaT, parse_json_response
 from app.core.config import settings
 from app.core.errors import ApiError
 from app.models.administrator import Administrator
@@ -14,7 +19,11 @@ from app.schemas.cv_extraction import TrainerCVExtractionResult
 from app.services.cv_ocr import OCRExtractor
 from app.services.cv_text_extractor import CVTextExtractionResult, CVTextExtractor
 from app.services.trainer import TrainerCVExtractionService
-from app.services.trainer_cv_extractor import _apply_deterministic_fallback
+from app.services.trainer_cv_extractor import (
+    TrainerCVExtractor,
+    _apply_deterministic_fallback,
+    _limit_text,
+)
 
 
 def test_identity_labels_keep_phone_and_gsm_separate() -> None:
@@ -76,6 +85,44 @@ class FakeLLM:
         }
 
 
+class ProfileLLM:
+    model_name = "qwen2.5:1.5b"
+
+    def generate_structured(self, prompt: str, response_schema: type[SchemaT]) -> dict:
+        assert "Power BI" in prompt
+        assert "Formateur indépendant" in prompt
+        assert response_schema is TrainerCVExtractionResult
+        return {
+            "full_name": "Nadia Ben Salem",
+            "email": "nadia@example.com",
+            "mobile_phone": "+216 22 123 456",
+            "company": "Formateur indépendant",
+            "job_title": "Consultante Data et IA",
+            "years_experience": 10,
+            "city": "Tunis",
+            "country": "Tunisie",
+            "skills": [
+                "Power BI", "Python", "SQL", "Intelligence artificielle",
+                "Pédagogie pour adultes", "Power BI",
+            ],
+            "certifications": [
+                {"name": "PL-300", "issuer": "Microsoft"},
+                {"name": "Certification formateur", "issuer": "ATFP"},
+            ],
+            "languages": [
+                {"name": "Français", "level": "Courant"},
+                {"name": "Arabe", "level": "Langue maternelle"},
+                {"name": "Anglais", "level": "Professionnel"},
+            ],
+            "experiences": [{
+                "job_title": "Formateur indépendant",
+                "start_date": "2016",
+                "is_current": True,
+                "description": "Formations Power BI, Python et SQL pour adultes.",
+            }],
+        }
+
+
 class NativeText(CVTextExtractor):
     def extract(self, path: Path, mime_type: str) -> CVTextExtractionResult:
         del path, mime_type
@@ -121,6 +168,49 @@ def test_strict_json_response() -> None:
     assert error.value.code == "LLM_INVALID_RESPONSE"
 
 
+def test_default_cv_service_uses_the_dedicated_cv_model(db_session: Session) -> None:
+    service = TrainerCVExtractionService(db_session)
+    assert isinstance(service.llm_client, OllamaLocalLLMClient)
+    assert service.llm_client.model_name == settings.cv_llm_model
+    assert service.llm_client.max_tokens == settings.cv_llm_max_tokens
+    assert service.llm_client.keep_alive == settings.cv_llm_keep_alive
+
+
+def test_cv_text_is_compacted_and_limited_for_the_lightweight_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "cv_llm_max_input_chars", 100)
+
+    limited, warning = _limit_text("  Profil formateur  \n\n" + "x" * 200)
+
+    assert limited.startswith("Profil formateur")
+    assert "[SECTION INTERMÉDIAIRE OMISE]" in limited
+    assert warning is not None
+
+
+def test_trainer_profile_fields_are_extracted_without_inventing_missing_data() -> None:
+    cv_text = """Nadia Ben Salem — Consultante Data et IA / Formateur indépendant
+Tunis, Tunisie | nadia@example.com | GSM +216 22 123 456
+10 ans d'expérience. Compétences : Power BI, Python, SQL, Intelligence artificielle.
+Certification PL-300 Microsoft ; Certification formateur ATFP.
+Langues : français courant, arabe langue maternelle, anglais professionnel.
+Depuis 2016 : formations Power BI, Python et SQL pour adultes."""
+
+    result = TrainerCVExtractor(ProfileLLM()).extract(cv_text)
+
+    assert result.full_name == "Nadia Ben Salem"
+    assert result.company == "Formateur indépendant"
+    assert result.years_experience == 10
+    assert result.birth_date is None
+    assert result.address is None
+    assert result.skills == [
+        "Power BI", "Python", "SQL", "Intelligence artificielle", "Pédagogie pour adultes",
+    ]
+    assert [item.name for item in result.certifications] == ["PL-300", "Certification formateur"]
+    assert [item.name for item in result.languages] == ["Français", "Arabe", "Anglais"]
+    assert result.experiences[0].description == "Formations Power BI, Python et SQL pour adultes."
+
+
 class _TagsResponse:
     def __init__(self, body: bytes) -> None:
         self.body = body
@@ -153,6 +243,125 @@ def test_ollama_health_distinguishes_timeout(monkeypatch: pytest.MonkeyPatch) ->
     health = OllamaLocalLLMClient().health()
     assert health.status == "unavailable"
     assert health.reason == "LLM_TIMEOUT"
+
+
+def test_ollama_generation_distinguishes_http_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = OllamaLocalLLMClient()
+    monkeypatch.setattr(
+        client,
+        "health",
+        lambda: LLMHealth("available", "ollama", client.model_name, 1, None),
+    )
+
+    def generation_failure(*args, **kwargs):
+        raise HTTPError("http://ollama/api/generate", 500, "error", {}, None)
+
+    monkeypatch.setattr("app.ai.local_llm.urlopen", generation_failure)
+    with pytest.raises(ApiError) as raised:
+        client.generate_structured("test", TrainerCVExtractionResult)
+    assert raised.value.status_code == 502
+    assert raised.value.code == "LLM_GENERATION_FAILED"
+
+
+def test_ollama_generation_uses_cpu_settings_and_keep_alive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = OllamaLocalLLMClient()
+    monkeypatch.setattr(
+        client,
+        "health",
+        lambda: LLMHealth("available", "ollama", client.model_name, 1, None),
+    )
+    captured: dict = {}
+
+    def generate(request, **kwargs):
+        del kwargs
+        captured.update(json.loads(request.data))
+        return _TagsResponse(b'{"response":"{}"}')
+
+    monkeypatch.setattr("app.ai.local_llm.urlopen", generate)
+    assert client.generate_structured("test", TrainerCVExtractionResult) == {}
+    assert captured["keep_alive"] == settings.local_llm_keep_alive
+    assert captured["stream"] is True
+    assert captured["options"]["num_ctx"] == settings.local_llm_num_ctx
+    assert captured["options"]["num_predict"] == settings.local_llm_max_tokens
+    assert captured["options"]["num_thread"] == settings.local_llm_num_thread
+    assert captured["options"]["num_batch"] == settings.local_llm_num_batch
+
+
+def test_cv_generation_uses_the_dedicated_model_and_short_keep_alive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = OllamaLocalLLMClient(
+        model_name=settings.cv_llm_model,
+        max_tokens=settings.cv_llm_max_tokens,
+        keep_alive=settings.cv_llm_keep_alive,
+    )
+    monkeypatch.setattr(
+        client,
+        "health",
+        lambda: LLMHealth("available", "ollama", client.model_name, 1, None),
+    )
+    captured: dict = {}
+
+    def generate(request, **kwargs):
+        del kwargs
+        captured.update(json.loads(request.data))
+        return _TagsResponse(b'{"response":"{}"}')
+
+    monkeypatch.setattr("app.ai.local_llm.urlopen", generate)
+    client.generate_structured("test", TrainerCVExtractionResult)
+
+    assert captured["model"] == settings.cv_llm_model
+    assert captured["keep_alive"] == settings.cv_llm_keep_alive
+
+
+def test_ollama_generation_is_serialized(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = OllamaLocalLLMClient()
+    monkeypatch.setattr(
+        client,
+        "health",
+        lambda: LLMHealth("available", "ollama", client.model_name, 1, None),
+    )
+    state_lock = Lock()
+    active = 0
+    peak = 0
+
+    def generate(*args, **kwargs):
+        del args, kwargs
+        nonlocal active, peak
+        with state_lock:
+            active += 1
+            peak = max(peak, active)
+        time.sleep(0.03)
+        with state_lock:
+            active -= 1
+        return _TagsResponse(b'{"response":"{}"}')
+
+    monkeypatch.setattr("app.ai.local_llm.urlopen", generate)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(
+            pool.map(
+                lambda _: client.generate_structured("test", TrainerCVExtractionResult),
+                range(2),
+            )
+        )
+    assert results == [{}, {}]
+    assert peak == 1
+
+
+def test_ollama_stream_chunks_are_combined(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = OllamaLocalLLMClient()
+    monkeypatch.setattr(
+        client,
+        "health",
+        lambda: LLMHealth("available", "ollama", client.model_name, 1, None),
+    )
+    streamed = b'{"response":"{\\"full"}\n{"response":"_name\\": null}"}\n'
+    monkeypatch.setattr(
+        "app.ai.local_llm.urlopen", lambda *args, **kwargs: _TagsResponse(streamed)
+    )
+    assert client.generate_structured("test", TrainerCVExtractionResult) == {"full_name": None}
 
 
 def test_native_extraction_and_human_review_without_auto_creation(

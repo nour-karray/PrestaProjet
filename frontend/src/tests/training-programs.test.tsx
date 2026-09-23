@@ -57,6 +57,7 @@ const response = (body: unknown, status = 200) =>
     status,
     headers: { "Content-Type": "application/json" },
   });
+const validNeed = { id: "need-1", training_case_id: "case-1", is_validated: true };
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -66,18 +67,19 @@ afterEach(() => {
 describe("Programme de formation", () => {
   it("propose la création quand aucun programme n’existe", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        response({ code: "TRAINING_PROGRAM_NOT_FOUND", message: "Introuvable" }, 404),
-      )
-      .mockResolvedValueOnce(response(program, 201));
+    const fetchMock = vi.fn((url: string, options?: RequestInit) => Promise.resolve(
+      url.endsWith("/need")
+        ? response(validNeed)
+        : options?.method === "POST"
+          ? response(program, 201)
+          : response({ code: "TRAINING_PROGRAM_NOT_FOUND", message: "Introuvable" }, 404),
+    ));
     vi.stubGlobal("fetch", fetchMock);
     renderWithQueryClient(
       <TrainingProgramSection caseId="case-1" caseTheme="Audit RH" onChanged={vi.fn()} />,
     );
 
-    await user.click(await screen.findByRole("button", { name: "Créer manuellement" }));
+    await user.click(await screen.findByRole("button", { name: "Générer le programme" }));
     expect(await screen.findByText("Structure du programme")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/api/training-cases/case-1/program"),
@@ -96,10 +98,13 @@ describe("Programme de formation", () => {
         },
       ],
     };
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(response(program))
-      .mockResolvedValueOnce(response(updated));
+    const fetchMock = vi.fn((url: string, options?: RequestInit) => Promise.resolve(
+      url.endsWith("/need")
+        ? response(validNeed)
+        : options?.method === "PATCH"
+          ? response(updated)
+          : response(program),
+    ));
     vi.stubGlobal("fetch", fetchMock);
     renderWithQueryClient(
       <TrainingProgramSection caseId="case-1" caseTheme="Audit RH" onChanged={vi.fn()} />,
@@ -107,7 +112,7 @@ describe("Programme de formation", () => {
 
     expect(await screen.findByText("Durée attendue")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Définition de l’audit/ }));
-    const title = screen.getByLabelText("Titre");
+    const title = screen.getByLabelText("Titre du module");
     await user.clear(title);
     await user.type(title, "Audit interne");
     await user.click(screen.getByRole("button", { name: "Enregistrer" }));
@@ -118,7 +123,7 @@ describe("Programme de formation", () => {
         expect.objectContaining({ method: "PATCH" }),
       ),
     );
-    expect(await screen.findByText(/Audit interne/)).toBeInTheDocument();
+    expect((await screen.findAllByText(/Audit interne/)).length).toBeGreaterThan(0);
   });
 
   it("rend un programme soumis non modifiable et exige un motif de retour", async () => {
@@ -132,10 +137,13 @@ describe("Programme de formation", () => {
       ...program,
       return_reason: "Ajouter un exemple.",
     };
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(response(submitted))
-      .mockResolvedValueOnce(response(returned));
+    const fetchMock = vi.fn((url: string, options?: RequestInit) => Promise.resolve(
+      url.endsWith("/need")
+        ? response(validNeed)
+        : options?.method === "POST"
+          ? response(returned)
+          : response(submitted),
+    ));
     vi.stubGlobal("fetch", fetchMock);
     renderWithQueryClient(
       <TrainingProgramSection caseId="case-1" caseTheme="Audit RH" onChanged={vi.fn()} />,

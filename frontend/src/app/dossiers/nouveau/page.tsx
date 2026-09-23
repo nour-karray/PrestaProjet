@@ -3,7 +3,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { FormPageLayout, PageContainer } from "@/components/templates";
@@ -31,11 +31,6 @@ export default function NewTrainingCasePage() {
       else router.push(`/dossiers/${trainingCase.id}`);
     },
   });
-  useEffect(() => {
-    if (!createdCase) return;
-    const timer = window.setTimeout(() => router.push(`/formateurs?case_id=${createdCase.id}&created=1`), 1800);
-    return () => window.clearTimeout(timer);
-  }, [createdCase, router]);
   return <AppShell><PageContainer><FormPageLayout>
     <p className="case-breadcrumb">Centre de formation <span>›</span> Dossiers <span>›</span> <strong>Créer un dossier</strong></p>
     <div className="case-create-heading">
@@ -45,6 +40,6 @@ export default function NewTrainingCasePage() {
     <WorkflowStepper steps={workflowLabels.map((label, index) => ({ label, state: index === 0 ? "current" as const : "locked" as const, reason: index > 0 ? "Disponible après la création de la demande" : undefined }))} />
     {mutation.isError && <p role="alert" className="mb-4 text-red-700">{mutation.error instanceof ApiError ? mutation.error.message : "La création a échoué."}</p>}
     <div className="mx-auto max-w-none"><TrainingCaseForm companies={companies.data?.items ?? []} pending={mutation.isPending} onSubmit={(values, mode = "continue") => mutation.mutate({ values, mode })} /></div>
-    {createdCase && <div className="modal-backdrop success-modal-backdrop"><section className="creation-success-modal" role="dialog" aria-modal="true" aria-labelledby="creation-success-title"><span>✓</span><h2 id="creation-success-title">Dossier créé avec succès</h2><p>Le dossier <strong>{createdCase.reference}</strong> a été enregistré.</p><small>Redirection vers l’affectation du formateur…</small><div><button className="btn btn-primary" onClick={() => router.push(`/formateurs?case_id=${createdCase.id}&created=1`)}>Choisir un formateur maintenant</button><Link className="btn btn-secondary" href="/dossiers">Retour aux dossiers</Link></div></section></div>}
+    {createdCase && <div className="modal-backdrop success-modal-backdrop"><section className="creation-success-modal" role="dialog" aria-modal="true" aria-labelledby="creation-success-title"><span>✓</span><h2 id="creation-success-title">Dossier créé avec succès</h2><p>Le dossier <strong>{createdCase.reference}</strong> a été enregistré.</p><small>Choisissez la prochaine action pour continuer.</small><div><button className="btn btn-primary" onClick={() => router.push(`/formateurs?case_id=${createdCase.id}&created=1`)}>Choisir un formateur maintenant</button><Link className="btn btn-secondary" href="/dossiers">Retour aux dossiers</Link></div></section></div>}
   </FormPageLayout></PageContainer></AppShell>;
 }

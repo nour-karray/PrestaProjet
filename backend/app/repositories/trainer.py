@@ -1,7 +1,9 @@
+import re
 from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import String, func, or_, select, update
+from sqlalchemy import cast as sql_cast
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
@@ -17,7 +19,12 @@ class TrainerRepository:
         return self.session.get(Trainer, trainer_id)
 
     def list(
-        self, search: str | None, include_inactive: bool, page: int, page_size: int
+        self,
+        search: str | None,
+        include_inactive: bool,
+        page: int,
+        page_size: int,
+        specialty: str | None = None,
     ) -> tuple[list[Trainer], int]:
         filters: list[ColumnElement[bool]] = []
         if not include_inactive:
@@ -32,6 +39,47 @@ class TrainerRepository:
                     Trainer.city.ilike(term),
                 )
             )
+        if specialty:
+            stop_words = {
+                "formation",
+                "dans",
+                "avec",
+                "pour",
+                "des",
+                "les",
+                "une",
+                "sur",
+                "the",
+                "and",
+            }
+            raw_terms = [specialty.strip(), *re.findall(r"[\wÀ-ÿ]+", specialty)]
+            terms = list(
+                dict.fromkeys(
+                    term
+                    for term in raw_terms
+                    if term
+                    and term.casefold() not in stop_words
+                    and (len(term) >= 3 or term.casefold() == "rh")
+                )
+            )
+            specialty_filters: list[ColumnElement[bool]] = []
+            for specialty_term in terms:
+                like_term = f"%{specialty_term}%"
+                specialty_filters.extend(
+                    [
+                        Trainer.job_title.ilike(like_term),
+                        Trainer.notes.ilike(like_term),
+                        Trainer.id.in_(
+                            select(TrainerCV.trainer_id).where(
+                                TrainerCV.trainer_id.is_not(None),
+                                TrainerCV.parsed_json.is_not(None),
+                                sql_cast(TrainerCV.parsed_json, String).ilike(like_term),
+                            )
+                        ),
+                    ]
+                )
+            if specialty_filters:
+                filters.append(or_(*specialty_filters))
         total = self.session.scalar(select(func.count(Trainer.id)).where(*filters)) or 0
         statement = (
             select(Trainer)
@@ -56,6 +104,15 @@ class CVRepository:
 
     def get_by_hash(self, sha256: str) -> TrainerCV | None:
         return self.session.scalar(select(TrainerCV).where(TrainerCV.sha256 == sha256))
+
+    def get_latest_by_trainer(self, trainer_id: UUID) -> TrainerCV | None:
+        statement = (
+            select(TrainerCV)
+            .where(TrainerCV.trainer_id == trainer_id)
+            .order_by(TrainerCV.uploaded_at.desc())
+            .limit(1)
+        )
+        return self.session.scalar(statement)
 
     def add(self, cv: TrainerCV) -> None:
         self.session.add(cv)

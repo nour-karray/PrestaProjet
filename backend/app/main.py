@@ -7,6 +7,7 @@ from app.api.companies import router as companies_router
 from app.api.program_generation import router as program_generation_router
 from app.api.trainers import router as trainers_router
 from app.api.training_cases import router as training_cases_router
+from app.api.training_catalog import router as training_catalog_router
 from app.api.training_documents import router as training_documents_router
 from app.api.training_needs import router as training_needs_router
 from app.api.training_pricings import router as training_pricings_router
@@ -32,6 +33,7 @@ app.include_router(auth_router)
 app.include_router(ai_health_router)
 app.include_router(companies_router)
 app.include_router(training_cases_router)
+app.include_router(training_catalog_router)
 app.include_router(training_needs_router)
 app.include_router(training_programs_router)
 app.include_router(program_generation_router)

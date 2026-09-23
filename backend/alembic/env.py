@@ -14,6 +14,7 @@ from app.models import (  # noqa: F401
     TrainerCV,
     TrainingCase,
     TrainingCaseCounter,
+    TrainingCatalogItem,
 )
 
 config = context.config

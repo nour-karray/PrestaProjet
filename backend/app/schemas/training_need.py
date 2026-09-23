@@ -4,15 +4,19 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.training_need import DeliveryMode
+from app.models.training_need import DeliveryMode, TrainingNeedLevel
 
 
 class TrainingNeedFields(BaseModel):
     target_audience: str | None = Field(default=None, max_length=500)
+    level: TrainingNeedLevel | None = None
     location: str | None = Field(default=None, max_length=300)
     participant_count: int | None = Field(default=None, gt=0)
     delivery_mode: DeliveryMode | None = None
-    duration_hours: Decimal | None = Field(default=None, gt=0, max_digits=8, decimal_places=2)
+    duration_hours: Decimal | None = Field(
+        default=None, ge=1, multiple_of=1, max_digits=8, decimal_places=2
+    )
+    planned_days_count: int | None = Field(default=None, ge=1, le=10)
     objectives: str | None = None
     desired_start_date: date | None = None
     desired_end_date: date | None = None

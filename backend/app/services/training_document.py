@@ -246,18 +246,28 @@ class TrainingDocumentService:
         days = []
         for day in program.days:
             modules = []
+            day_theory = day_practice = 0
+            day_methods: set[str] = set()
             for item in sorted(
                 (x for x in day.items if x.parent_id is None), key=lambda x: x.position
             ):
                 total_theory += item.theory_minutes
                 total_practice += item.practice_minutes
+                day_theory += item.theory_minutes
+                day_practice += item.practice_minutes
+                day_methods.update(link.method for link in item.method_links)
                 children = []
                 for child in sorted(item.children, key=lambda x: x.position):
                     total_theory += child.theory_minutes
                     total_practice += child.practice_minutes
+                    day_theory += child.theory_minutes
+                    day_practice += child.practice_minutes
+                    day_methods.update(link.method for link in child.method_links)
                     children.append(
                         {
                             "title": child.title,
+                            "content": child.content,
+                            "methods": [link.method for link in child.method_links],
                             "duration": self._duration(
                                 child.theory_minutes + child.practice_minutes
                             ),
@@ -268,11 +278,20 @@ class TrainingDocumentService:
                         "position": item.position,
                         "title": item.title,
                         "content": item.content,
+                        "methods": [link.method for link in item.method_links],
                         "duration": self._duration(item.theory_minutes + item.practice_minutes),
                         "submodules": children,
                     }
                 )
-            days.append({"title": day.title, "modules": modules})
+            days.append(
+                {
+                    "title": day.title,
+                    "modules": modules,
+                    "methods": sorted(day_methods),
+                    "theory_minutes": day_theory,
+                    "practice_minutes": day_practice,
+                }
+            )
         vat_note = (
             pricing.vat_exemption_reason or pricing.vat_legal_reference
             if pricing.vat_rate == 0
@@ -296,12 +315,16 @@ class TrainingDocumentService:
             "trainer": {"full_name": training_case.trainer.full_name},
             "need": {
                 "location": need.location,
+                "target_audience": need.target_audience,
                 "participant_count": need.participant_count,
                 "period": self._period(need.desired_start_date, need.desired_end_date),
+                "pedagogical_objectives": need.objectives,
             },
             "program": {
+                "theme": training_case.theme,
                 "title": program.title,
                 "objectives": program.general_objectives or need.objectives,
+                "evaluation_method": program.evaluation_method,
                 "prerequisites": program.prerequisites,
                 "duration": self._duration(total_theory + total_practice),
                 "theory": self._duration(total_theory),

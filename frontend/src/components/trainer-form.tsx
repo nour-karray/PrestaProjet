@@ -18,6 +18,12 @@ const fields: {
   { name: "employer_address", label: "Adresse de l’employeur" },
   { name: "phone", label: "Téléphone" },
   { name: "mobile_phone", label: "GSM" },
+  { name: "job_title", label: "Poste actuel" },
+  { name: "years_experience", label: "Années d’expérience", type: "number" },
+  { name: "city", label: "Ville" },
+  { name: "country", label: "Pays" },
+  { name: "linkedin_url", label: "Profil LinkedIn", type: "url" },
+  { name: "website", label: "Site web", type: "url" },
 ];
 
 export function TrainerForm({
@@ -58,6 +64,7 @@ export function TrainerForm({
             min={field.type === "number" ? 0 : undefined}
             value={String(values[field.name] ?? "")}
             onChange={(event) => update(field.name, event.target.value)}
+            placeholder={field.name === "full_name" ? "Nom du formateur" : "Non renseigné dans le CV"}
             className="rounded-md border border-slate-300 px-3 py-2.5 font-normal"
           />
         </label>

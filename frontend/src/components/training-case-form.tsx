@@ -8,11 +8,11 @@ import { z } from "zod";
 
 import { WorkflowActionBar } from "@/components/ui";
 import { createCompany, createContact, getCompanies, getCompany } from "@/features/companies/api";
+import { getTrainingCatalog } from "@/features/training-catalog/api";
 import { ApiError } from "@/lib/api";
 import type { CompanyListItem, Contact } from "@/types/company";
 import type { TrainingCaseInput } from "@/types/training-case";
 
-const themeSuggestions = ["Management", "Communication", "Gestion des conflits", "Ressources humaines", "Cybersécurité", "Gestion de projet"];
 const schema = z.object({
   company_id: z.string().min(1, "L’entreprise est obligatoire."),
   primary_contact_id: z.string(),
@@ -54,12 +54,9 @@ export function TrainingCaseForm({
   const [contactSearch, setContactSearch] = useState("");
   const [contactModal, setContactModal] = useState(false);
   const [contactDraft, setContactDraft] = useState({ full_name: "", phone: "", email: "" });
-  const [themeOpen, setThemeOpen] = useState(false);
-  const [themeActive, setThemeActive] = useState(-1);
   const [feedback, setFeedback] = useState<string | null>(null);
   const companyRef = useRef<HTMLDivElement>(null);
   const contactRef = useRef<HTMLDivElement>(null);
-  const themeRef = useRef<HTMLLabelElement>(null);
   const { register, handleSubmit, setValue, control, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -74,6 +71,19 @@ export function TrainingCaseForm({
   const theme = useWatch({ control, name: "theme" });
   const description = useWatch({ control, name: "description" });
   const formReady = Boolean(companyId && theme.trim());
+  const trainingCatalog = useQuery({ queryKey: ["training-catalog"], queryFn: getTrainingCatalog });
+  const catalogByCategory = useMemo(() => {
+    const grouped = new Map<string, string[]>();
+    for (const item of Array.isArray(trainingCatalog.data) ? trainingCatalog.data : []) {
+      if (!item.is_active) continue;
+      grouped.set(item.category, [...(grouped.get(item.category) ?? []), item.title]);
+    }
+    return [...grouped.entries()];
+  }, [trainingCatalog.data]);
+  const catalogIsFamilyList = useMemo(
+    () => catalogByCategory.every(([category, items]) => items.length === 1 && items[0] === category),
+    [catalogByCategory],
+  );
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedCompanyText(companyText.trim()), 300);
@@ -82,9 +92,11 @@ export function TrainingCaseForm({
   const companySearch = useQuery({
     queryKey: ["companies", "combobox", debouncedCompanyText],
     queryFn: () => getCompanies({ search: debouncedCompanyText, page: 1, pageSize: 8 }),
-    enabled: debouncedCompanyText.length >= 2 && !selectedCompany,
+    // On ouvre d'abord le catalogue des sociétés existantes ; la saisie ne
+    // sert ensuite qu'à filtrer cette même liste.
+    enabled: companyOpen && !selectedCompany && debouncedCompanyText.length > 0,
   });
-  const companyResults = (companySearch.data?.items ?? []).slice(0, 8);
+  const companyResults = (debouncedCompanyText ? companySearch.data?.items ?? [] : companies).slice(0, 8);
   const companyExact = companyResults.some((item) => item.name.trim().toLocaleLowerCase("fr") === companyText.trim().toLocaleLowerCase("fr"));
   const companyQuery = useQuery({
     queryKey: ["company-contacts", companyId],
@@ -94,12 +106,9 @@ export function TrainingCaseForm({
   const contacts = useMemo(() => [...(companyQuery.data?.contacts ?? [])].sort((a, b) => Number(b.is_primary) - Number(a.is_primary)), [companyQuery.data?.contacts]);
   const visibleContacts = contacts.filter((contact) => [contact.full_name, contact.email, contact.phone].filter(Boolean).join(" ").toLocaleLowerCase("fr").includes(contactSearch.trim().toLocaleLowerCase("fr"))).slice(0, 8);
   const selectedContact = contacts.find((contact) => contact.id === contactId);
-  const visibleThemes = themeSuggestions.filter((item) => item.toLocaleLowerCase("fr").includes(theme.trim().toLocaleLowerCase("fr")));
-  const customTheme = theme.trim() && !themeSuggestions.some((item) => item.toLocaleLowerCase("fr") === theme.trim().toLocaleLowerCase("fr"));
 
   useOutsideClose(companyRef, () => setCompanyOpen(false));
   useOutsideClose(contactRef, () => setContactOpen(false));
-  useOutsideClose(themeRef, () => setThemeOpen(false));
 
   const selectCompany = (company: CompanyListItem) => {
     setSelectedCompany(company);
@@ -144,20 +153,6 @@ export function TrainingCaseForm({
       selectCompany(companyResults[companyActive]);
     }
   };
-  const themeKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    const options = [...visibleThemes, ...(customTheme ? [theme.trim()] : [])];
-    if (event.key === "Escape") return setThemeOpen(false);
-    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      event.preventDefault();
-      setThemeOpen(true);
-      setThemeActive((current) => event.key === "ArrowDown" ? Math.min(current + 1, options.length - 1) : Math.max(current - 1, 0));
-    }
-    if (event.key === "Enter" && themeActive >= 0 && options[themeActive]) {
-      event.preventDefault();
-      setValue("theme", options[themeActive], { shouldValidate: true });
-      setThemeOpen(false);
-    }
-  };
   const actionError = companyCreation.error ?? contactCreation.error;
 
   return <form onSubmit={submit("continue")} className="case-create-form case-create-form-simple" noValidate>
@@ -167,10 +162,10 @@ export function TrainingCaseForm({
       {!selectedCompany ? <>
         <div className="combobox-anchor">
           <span>⌕</span>
-          <input id="company-combobox" role="combobox" aria-expanded={companyOpen} aria-controls="company-options" aria-activedescendant={companyActive >= 0 ? `company-option-${companyActive}` : undefined} aria-autocomplete="list" value={companyText} onFocus={() => setCompanyOpen(true)} onChange={(event) => { setCompanyText(event.target.value); setCompanyOpen(true); setCompanyActive(-1); }} onKeyDown={companyKeyDown} placeholder="Rechercher ou créer une entreprise…" className="field" autoComplete="off" />
+          <input id="company-combobox" role="combobox" aria-expanded={companyOpen} aria-controls="company-options" aria-activedescendant={companyActive >= 0 ? `company-option-${companyActive}` : undefined} aria-autocomplete="list" value={companyText} onFocus={() => setCompanyOpen(true)} onChange={(event) => { setCompanyText(event.target.value); setCompanyOpen(true); setCompanyActive(-1); }} onKeyDown={companyKeyDown} placeholder="Choisir ou rechercher une société…" className="field" autoComplete="off" />
         </div>
         {companyOpen && <div className="combobox-menu" id="company-options" role="listbox">
-          {companyText.trim().length < 2 && <p>Saisissez au moins 2 caractères.</p>}
+          {!companyText.trim() && <p>Sociétés déjà enregistrées</p>}
           {companySearch.isFetching && <p role="status">Recherche en cours…</p>}
           {companyResults.map((company, index) => <button id={`company-option-${index}`} role="option" aria-selected={companyActive === index} type="button" key={company.id} onMouseDown={(event) => event.preventDefault()} onClick={() => selectCompany(company)} className={companyActive === index ? "active" : ""}><span className="combo-avatar">{company.name[0]}</span><span><strong>{company.name}</strong>{company.city && <small>{company.city}</small>}</span><i>Actif</i></button>)}
           {companyText.trim().length >= 2 && !companySearch.isFetching && companyResults.length === 0 && <p>Aucune entreprise correspondante.</p>}
@@ -191,15 +186,21 @@ export function TrainingCaseForm({
       </div>}
     </div>
 
-    <label className="case-theme-field" ref={themeRef}>Thème de la formation <em>*</em>
-      <div className="combobox-anchor"><span>◇</span><input role="combobox" aria-expanded={themeOpen} aria-controls="theme-options" aria-activedescendant={themeActive >= 0 ? `theme-option-${themeActive}` : undefined} aria-label="Thème" {...register("theme")} onFocus={() => setThemeOpen(true)} onChange={(event) => { setValue("theme", event.target.value); setThemeOpen(true); setThemeActive(-1); }} onKeyDown={themeKeyDown} placeholder="Rechercher ou saisir un nouveau thème…" className="field" autoComplete="off" /></div>
-      {themeOpen && <div className="combobox-menu theme-menu" id="theme-options" role="listbox">{visibleThemes.map((item, index) => <button id={`theme-option-${index}`} role="option" aria-selected={theme === item} type="button" key={item} onMouseDown={(event) => event.preventDefault()} onClick={() => { setValue("theme", item, { shouldValidate: true }); setThemeOpen(false); }}>{item}</button>)}{customTheme && <button role="option" aria-selected="false" type="button" className="combo-create" onMouseDown={(event) => event.preventDefault()} onClick={() => setThemeOpen(false)}>Utiliser « {theme.trim()} »</button>}</div>}
+    <label className="case-theme-field">Thème de la formation <em>*</em>
+      <select aria-label="Thème" {...register("theme")} className="field" defaultValue={theme} disabled={trainingCatalog.isPending}>
+        <option value="">{trainingCatalog.isPending ? "Chargement du catalogue…" : "Sélectionner une formation du catalogue"}</option>
+        {catalogIsFamilyList
+          ? catalogByCategory.map(([, items]) => <option key={items[0]} value={items[0]}>{items[0]}</option>)
+          : catalogByCategory.map(([category, items]) => <optgroup key={category} label={category}>{items.map((item) => <option key={item} value={item}>{item}</option>)}</optgroup>)}
+      </select>
+      <small className="form-help">Le thème est sélectionné exclusivement depuis le catalogue de formations.</small>
+      {trainingCatalog.isError && <span className="field-error" role="alert">Impossible de charger le catalogue de formations.</span>}
       {errors.theme && <span className="field-error">{errors.theme.message}</span>}
     </label>
 
     <label className="case-description-field">Description du besoin <span className="optional-label">(facultatif)</span><textarea aria-label="Description du besoin" {...register("description")} rows={5} maxLength={1000} placeholder="Objectif général et contexte de la demande…" className="field" /><small>{description?.length ?? 0}/1000</small>{errors.description && <span className="field-error">{errors.description.message}</span>}</label>
     {contactModal && <div className="modal-backdrop" role="presentation"><section role="dialog" aria-modal="true" aria-labelledby="contact-modal-title" className="quick-contact-modal"><h2 id="contact-modal-title">Ajouter une personne</h2><label>Nom complet *<input className="field" value={contactDraft.full_name} onChange={(event) => setContactDraft((current) => ({ ...current, full_name: event.target.value }))} /></label><label>Téléphone<input className="field" value={contactDraft.phone} onChange={(event) => setContactDraft((current) => ({ ...current, phone: event.target.value }))} /></label><label>Email<input type="email" className="field" value={contactDraft.email} onChange={(event) => setContactDraft((current) => ({ ...current, email: event.target.value }))} /></label><div><button type="button" className="btn btn-secondary" onClick={() => setContactModal(false)}>Annuler</button><button type="button" className="btn btn-primary" disabled={!contactDraft.full_name.trim() || contactCreation.isPending} onClick={() => contactCreation.mutate()}>{contactCreation.isPending ? "Ajout en cours…" : "Ajouter la personne"}</button></div></section></div>}
     {actionError && <p className="field-error form-api-error" role="alert">{actionError instanceof ApiError ? actionError.message : "L’action a échoué."}</p>}
-    <div className="case-form-actions"><WorkflowActionBar back={<button type="button" className="btn btn-secondary" disabled={pending || !formReady} onClick={submit("draft")}>Enregistrer comme brouillon</button>} primary={<button type="submit" aria-label={submitLabel === "Créer le dossier et continuer" ? "Créer le dossier" : submitLabel} className="btn btn-primary" disabled={pending || !formReady}>{pending ? "Création en cours…" : submitLabel}</button>} /></div>
+    <div className="case-form-actions"><WorkflowActionBar primary={<button type="submit" aria-label={submitLabel === "Créer le dossier et continuer" ? "Créer le dossier" : submitLabel} className="btn btn-primary" disabled={pending || !formReady}>{pending ? "Création en cours…" : submitLabel}</button>} /></div>
   </form>;
 }

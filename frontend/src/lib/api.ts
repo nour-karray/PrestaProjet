@@ -7,6 +7,7 @@ export class ApiError extends Error {
     public readonly status: number,
     public readonly code: string,
     message: string,
+    public readonly details: unknown = null,
   ) {
     super(message);
     this.name = "ApiError";
@@ -15,11 +16,13 @@ export class ApiError extends Error {
 
 async function parseError(response: Response): Promise<ApiError> {
   try {
-    const payload = (await response.json()) as ApiErrorPayload;
+    const payload = (await response.json()) as ApiErrorPayload & { detail?: unknown };
+    const validationMessage = formatValidationMessage(payload.detail);
     return new ApiError(
       response.status,
-      payload.code ?? "API_ERROR",
-      payload.message ?? "Une erreur est survenue.",
+      payload.code ?? (validationMessage ? "REQUEST_VALIDATION_FAILED" : "API_ERROR"),
+      payload.message ?? validationMessage ?? "Une erreur est survenue.",
+      payload.details ?? payload.detail ?? null,
     );
   } catch {
     return new ApiError(
@@ -28,6 +31,19 @@ async function parseError(response: Response): Promise<ApiError> {
       "Le serveur a retourné une réponse inattendue.",
     );
   }
+}
+
+function formatValidationMessage(detail: unknown): string | null {
+  if (!Array.isArray(detail) || detail.length === 0) return null;
+  const first = detail[0];
+  if (!first || typeof first !== "object") return null;
+  const location = (first as { loc?: unknown }).loc;
+  const field = Array.isArray(location)
+    ? location.filter((part): part is string => typeof part === "string" && part !== "body").at(-1)
+    : null;
+  return field
+    ? `La valeur du champ « ${field} » est invalide. Vérifiez les informations saisies.`
+    : "Certaines informations saisies sont invalides. Vérifiez le formulaire.";
 }
 
 export async function apiRequest<T>(

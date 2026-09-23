@@ -70,6 +70,10 @@ export function ErrorState({ label }: { label: string }) {
   return <div className="state-card state-error" role="alert"><Icon name="alert" /><p>{label}</p></div>;
 }
 
+export function FeedbackToast({ tone = "success", children }: { tone?: "success" | "error"; children: ReactNode }) {
+  return <p className={tone === "success" ? "toast-success" : "toast-error"} role={tone === "success" ? "status" : "alert"}>{children}</p>;
+}
+
 export function EmptyState({ title, description }: { title: string; description?: string }) {
   return <div className="state-card"><span className="state-icon"><Icon name="folder" /></span><strong>{title}</strong>{description && <p>{description}</p>}</div>;
 }

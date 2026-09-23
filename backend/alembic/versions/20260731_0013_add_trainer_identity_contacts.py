@@ -1,6 +1,7 @@
 """Add trainer identity and distinct phone contact fields."""
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision = "20260731_0013"

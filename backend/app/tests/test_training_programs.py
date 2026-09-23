@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 from uuid import uuid4
 
@@ -25,6 +26,7 @@ def make_eligible_case(
     administrator: Administrator,
     *,
     duration_hours: Decimal = Decimal("3"),
+    planned_days_count: int = 1,
     status: TrainingCaseStatus = TrainingCaseStatus.BESOIN_COMPLETE,
     validated_need: bool = True,
     with_trainer: bool = True,
@@ -43,11 +45,15 @@ def make_eligible_case(
         TrainingNeed(
             training_case_id=training_case.id,
             target_audience="Responsables RH",
+            level="INTERMEDIATE",
             location="Tunis",
             participant_count=8,
             delivery_mode="PRESENTIEL",
             duration_hours=duration_hours,
+            planned_days_count=planned_days_count,
             objectives="Maîtriser les fondamentaux de l’audit RH.",
+            desired_start_date=date(2026, 9, 1),
+            desired_end_date=date(2026, 9, max(1, planned_days_count)),
             is_validated=validated_need,
         )
     )
@@ -134,6 +140,18 @@ def test_creation_eligibility_and_uniqueness(
         status=TrainingCaseStatus.BESOIN_A_COMPLETER,
     )
     assert client.post(f"/api/training-cases/{wrong_status.id}/program", json={}).status_code == 409
+
+    accepted_only = make_eligible_case(
+        db_session,
+        active_administrator,
+        status=TrainingCaseStatus.FORMATEUR_ACCEPTE,
+    )
+    accepted_response = client.post(
+        f"/api/training-cases/{accepted_only.id}/program",
+        json={},
+    )
+    assert accepted_response.status_code == 409
+    assert accepted_response.json()["code"] == "INVALID_TRAINING_CASE_STATUS"
 
     no_trainer = make_eligible_case(db_session, active_administrator, with_trainer=False)
     assert client.post(f"/api/training-cases/{no_trainer.id}/program", json={}).status_code == 409

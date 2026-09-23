@@ -442,7 +442,6 @@ class TrainingProgramService:
     def ensure_creation_allowed(self, training_case: TrainingCase) -> None:
         if training_case.status not in {
             TrainingCaseStatus.BESOIN_COMPLETE.value,
-            TrainingCaseStatus.FORMATEUR_ACCEPTE.value,
             TrainingCaseStatus.PROGRAMME_EN_PREPARATION.value,
         }:
             raise ApiError(
@@ -457,6 +456,24 @@ class TrainingProgramService:
             raise ApiError(404, "TRAINING_NEED_NOT_FOUND", "Le besoin client est introuvable.")
         if not need.is_validated:
             raise ApiError(409, "TRAINING_NEED_NOT_VALIDATED", "Le besoin client doit être validé.")
+        required = (
+            need.target_audience,
+            need.level,
+            need.location,
+            need.participant_count,
+            need.delivery_mode,
+            need.duration_hours,
+            need.planned_days_count,
+            need.objectives,
+            need.desired_start_date,
+            need.desired_end_date,
+        )
+        if any(value is None or value == "" for value in required):
+            raise ApiError(
+                409,
+                "TRAINING_NEED_INCOMPLETE",
+                "Tous les champs obligatoires du besoin doivent être renseignés.",
+            )
 
     def _validate_parent(
         self, day: TrainingProgramDay, payload: TrainingProgramItemCreate

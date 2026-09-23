@@ -21,6 +21,10 @@ const companyList = {
   page: 1,
   page_size: 10,
 };
+const trainingCatalog = [
+  { id: "catalog-1", category: "Management", title: "Management", is_active: true },
+  { id: "catalog-2", category: "Cybersécurité", title: "Cybersécurité", is_active: true },
+];
 const trainingCase = {
   id: "case-1",
   reference: "TR-2026-000001",
@@ -54,21 +58,31 @@ describe("Gestion des dossiers", () => {
     const user = userEvent.setup();
     const contact = { id: "contact-1", company_id: "company-1", full_name: "Contact principal", email: null, phone: null, job_title: null, is_primary: true, created_at: "2026-07-24T12:00:00Z", updated_at: "2026-07-24T12:00:00Z" };
     vi.stubGlobal("fetch", vi.fn((url: string, options?: RequestInit) => {
-      const body = options?.method === "POST" ? trainingCase : url.endsWith("/api/companies/company-1") ? { ...companyList.items[0], contacts: [contact] } : companyList;
+      const body = url.includes("/api/training-catalog") ? trainingCatalog : options?.method === "POST" ? trainingCase : url.endsWith("/api/companies/company-1") ? { ...companyList.items[0], contacts: [contact] } : companyList;
       return Promise.resolve(new Response(JSON.stringify(body), { status: options?.method === "POST" ? 201 : 200, headers: { "Content-Type": "application/json" } }));
     }));
-    renderWithQueryClient(<NewTrainingCasePage />);
+    const { container } = renderWithQueryClient(<NewTrainingCasePage />);
     expect(screen.getByRole("button", { name: "Créer le dossier" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Enregistrer comme brouillon" })).not.toBeInTheDocument();
     await user.type(screen.getByRole("combobox", { name: /Entreprise/ }), "AB");
     expect(await screen.findByRole("option", { name: /ABC Conseil/ })).toBeInTheDocument();
     await user.click(screen.getByRole("option", { name: /ABC Conseil/ }));
     await user.click(screen.getByRole("combobox", { name: /Personne/ }));
     expect(await screen.findByRole("option", { name: /Contact principal/ })).toBeInTheDocument();
-    await user.type(screen.getByLabelText("Thème"), "Audit RH");
+    await user.selectOptions(screen.getByLabelText("Thème"), "Management");
+    expect(container.querySelectorAll("optgroup")).toHaveLength(0);
     expect(screen.getByText("(facultatif)")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Créer le dossier" }));
     expect(await screen.findByText("Dossier créé avec succès")).toBeInTheDocument();
     expect(screen.getByText("TR-2026-000001")).toBeInTheDocument();
+  });
+
+  it("affiche les sociétés existantes dès l’ouverture du champ entreprise", async () => {
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(url.includes("/api/training-catalog") ? trainingCatalog : companyList), { status: 200, headers: { "Content-Type": "application/json" } }))));
+    renderWithQueryClient(<NewTrainingCasePage />);
+    await userEvent.click(screen.getByRole("combobox", { name: /Entreprise/ }));
+    expect(await screen.findByText("Sociétés déjà enregistrées")).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: /ABC Conseil/ })).toBeInTheDocument();
   });
 
   it("affiche le détail, change le statut, annule et montre l’historique", async () => {

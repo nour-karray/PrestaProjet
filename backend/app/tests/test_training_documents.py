@@ -19,6 +19,7 @@ from app.models.training_program import (
     TrainingProgram,
     TrainingProgramDay,
     TrainingProgramItem,
+    TrainingProgramItemMethod,
 )
 from app.services.training_document import TrainingDocumentService
 from app.storage.documents import DocumentStorage
@@ -64,6 +65,7 @@ def make_ready_case(
         training_case=training_case,
         title="Programme d’audit RH",
         general_objectives="Maîtriser les étapes de l’audit.",
+        evaluation_method="Étude de cas finale et restitution.",
         is_submitted=True,
         is_validated=True,
     )
@@ -76,6 +78,7 @@ def make_ready_case(
         theory_minutes=180,
         practice_minutes=180,
         position=1,
+        method_links=[TrainingProgramItemMethod(method="ETUDE_DE_CAS")],
     )
     session.add(module)
     training_case.training_pricing = TrainingPricing(

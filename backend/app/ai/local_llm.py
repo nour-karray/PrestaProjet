@@ -1,6 +1,7 @@
 import json
 import time
 from dataclasses import dataclass
+from threading import Lock
 from typing import Protocol, TypeVar
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -11,6 +12,10 @@ from app.core.config import settings
 from app.core.errors import ApiError
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
+
+# CPU-only inference is deliberately serialized. Concurrent generations make
+# each request slower and can force an 8 GB Windows host to page heavily.
+_generation_lock = Lock()
 
 
 @dataclass(frozen=True)
@@ -29,10 +34,18 @@ class LocalLLMClient(Protocol):
 
 
 class OllamaLocalLLMClient:
-    def __init__(self, timeout_seconds: int | None = None) -> None:
+    def __init__(
+        self,
+        timeout_seconds: int | None = None,
+        model_name: str | None = None,
+        max_tokens: int | None = None,
+        keep_alive: str | None = None,
+    ) -> None:
         self.base_url = settings.local_llm_url
-        self.model_name = settings.local_llm_model
+        self.model_name = model_name or settings.local_llm_model
         self.timeout_seconds = timeout_seconds or settings.local_llm_timeout_seconds
+        self.max_tokens = max_tokens or settings.local_llm_max_tokens
+        self.keep_alive = keep_alive or settings.local_llm_keep_alive
 
     def health(self) -> LLMHealth:
         started = time.perf_counter()
@@ -80,6 +93,10 @@ class OllamaLocalLLMClient:
         )
 
     def generate_structured(self, prompt: str, response_schema: type[SchemaT]) -> dict:
+        with _generation_lock:
+            return self._generate_structured(prompt, response_schema)
+
+    def _generate_structured(self, prompt: str, response_schema: type[SchemaT]) -> dict:
         health = self.health()
         if health.status != "available":
             messages = {
@@ -97,13 +114,16 @@ class OllamaLocalLLMClient:
                 "model": self.model_name,
                 "prompt": f"{prompt}\n\nSCHÉMA JSON OBLIGATOIRE:\n{schema_instruction}",
                 "format": "json",
-                "stream": False,
+                # Ollama emits progress chunks while a very slow CPU generation
+                # is still healthy. Reading the NDJSON stream prevents the socket
+                # timeout from treating a long generation as a dead server.
+                "stream": True,
+                "keep_alive": self.keep_alive,
                 "options": {
-                    "num_ctx": settings.local_llm_max_tokens,
-                    # A CV extraction response is compact. Letting a small local model
-                    # emit thousands of tokens can keep the request alive until the
-                    # HTTP timeout when it starts repeating malformed JSON.
-                    "num_predict": min(settings.local_llm_max_tokens, 1024),
+                    "num_ctx": settings.local_llm_num_ctx,
+                    "num_predict": self.max_tokens,
+                    "num_thread": settings.local_llm_num_thread,
+                    "num_batch": settings.local_llm_num_batch,
                     "temperature": settings.local_llm_temperature,
                 },
             }
@@ -116,10 +136,23 @@ class OllamaLocalLLMClient:
         )
         try:
             with urlopen(request, timeout=self.timeout_seconds) as response:
-                body = json.loads(response.read())
+                generated = _read_streamed_response(response.read())
         except TimeoutError as exc:
             raise ApiError(
                 504, "LLM_TIMEOUT", "Le modèle local a dépassé le délai autorisé."
+            ) from exc
+        except HTTPError as exc:
+            if exc.code == 404:
+                raise ApiError(
+                    503,
+                    "LLM_MODEL_NOT_FOUND",
+                    "Le modèle Ollama configuré n’est pas installé.",
+                ) from exc
+            raise ApiError(
+                502,
+                "LLM_GENERATION_FAILED",
+                "Ollama a refusé ou interrompu la génération.",
+                {"http_status": exc.code},
             ) from exc
         except URLError as exc:
             if isinstance(exc.reason, TimeoutError):
@@ -127,18 +160,32 @@ class OllamaLocalLLMClient:
                     504, "LLM_TIMEOUT", "Le modèle local a dépassé le délai autorisé."
                 ) from exc
             raise ApiError(503, "LLM_UNAVAILABLE", "Le serveur Ollama est indisponible.") from exc
-        except HTTPError as exc:
-            code = "LLM_MODEL_NOT_FOUND" if exc.code == 404 else "LLM_UNAVAILABLE"
-            raise ApiError(503, code, "Le serveur Ollama a refusé la requête.") from exc
         except OSError as exc:
             raise ApiError(503, "LLM_UNAVAILABLE", "Le serveur Ollama est indisponible.") from exc
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             raise ApiError(
                 502, "LLM_INVALID_RESPONSE", "Ollama a retourné une réponse invalide."
             ) from exc
-        if not isinstance(body, dict) or not isinstance(body.get("response"), str):
-            raise ApiError(502, "LLM_INVALID_RESPONSE", "Ollama a retourné une réponse invalide.")
-        return parse_json_response(body["response"])
+        return parse_json_response(generated)
+
+
+def _read_streamed_response(raw_body: bytes) -> str:
+    chunks: list[str] = []
+    try:
+        for raw_line in raw_body.splitlines():
+            if not raw_line.strip():
+                continue
+            body = json.loads(raw_line)
+            if not isinstance(body, dict) or not isinstance(body.get("response"), str):
+                raise ValueError
+            chunks.append(body["response"])
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
+        raise ApiError(
+            502, "LLM_INVALID_RESPONSE", "Ollama a retourné une réponse invalide."
+        ) from exc
+    if not chunks:
+        raise ApiError(502, "LLM_INVALID_RESPONSE", "Ollama a retourné une réponse invalide.")
+    return "".join(chunks)
 
 
 def parse_json_response(raw_response: str) -> dict:

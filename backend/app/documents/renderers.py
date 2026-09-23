@@ -15,12 +15,15 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from app.documents.program_pdf import generate_program_pdf, program_from_document_snapshot
+
 BLUE = colors.HexColor("#1d4ed8")
 
 
 def render_document(document_type: str, data: dict[str, Any]) -> bytes:
+    if document_type == "PROGRAM":
+        return generate_program_pdf(program_from_document_snapshot(data))
     renderer = {
-        "PROGRAM": _program,
         "QUOTE": _quote,
         "AGREEMENT": _agreement,
         "ATTENDANCE_SHEET": _attendance,

@@ -23,6 +23,7 @@ export type TrainerInput = {
 
 export type Trainer = TrainerInput & {
   id: string;
+  cv_id: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -60,4 +61,11 @@ export type TrainerCv = {
   parsed_json: Partial<TrainerInput> | null;
   extraction_error: string | null;
   extraction_error_code: string | null;
+};
+
+export type TrainerCvList = {
+  items: TrainerCv[];
+  total: number;
+  page: number;
+  page_size: number;
 };

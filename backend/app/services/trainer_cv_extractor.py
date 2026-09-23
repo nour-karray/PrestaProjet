@@ -8,21 +8,26 @@ from app.core.errors import ApiError
 from app.schemas.company import validate_local_email
 from app.schemas.cv_extraction import TrainerCVExtractionResult
 
-PROMPT_TEMPLATE = """Tu extrais des informations structurées depuis un CV.
-Analyse uniquement le texte délimité ci-dessous et retourne uniquement un objet JSON.
-Respecte strictement le schéma fourni par le serveur. Aucun Markdown ni explication.
-N'invente aucune information. Utilise null pour les champs absents et des listes vides.
-Conserve les noms propres et les formulations réellement présentes.
-Signale toute ambiguïté dans warnings.
-Pour les coordonnées, respecte exactement les libellés du document :
-- "Téléphone" alimente phone ;
-- "GSM" ou "Mobile" alimente mobile_phone.
-Ne place jamais une date, un numéro CIN ou un numéro de passeport dans un champ téléphone.
-Sépare "Date et lieu de naissance" entre birth_date et birth_place.
-Ne déduis pas une entreprise actuelle sans preuve et ne calcule pas arbitrairement
-les années d'expérience. Ne transforme pas une compétence implicite en compétence
-explicite. Ne confonds pas une école avec une entreprise, une mission avec un poste,
-et ne mélange pas plusieurs expériences.
+PROMPT_TEMPLATE = """Extrais un profil formateur depuis le CV ci-dessous.
+Retourne uniquement un objet JSON valide conforme au schéma fourni.
+Pas de Markdown, pas d'explication.
+
+Règles :
+- Utilise uniquement une information explicitement présente. Absente : null ou liste vide.
+- Ne déduis jamais date/lieu de naissance, adresse, employeur, poste ou expérience.
+- "Téléphone" -> phone ; "GSM"/"Mobile" -> mobile_phone. Jamais de CIN/passeport comme téléphone.
+- city/country sont la localisation actuelle, jamais le lieu de naissance.
+- Un statut explicite « Consultant indépendant » ou « Formateur indépendant »
+  peut alimenter company.
+- years_experience seulement si une durée fiable est écrite ou calculable
+  depuis des dates non ambiguës.
+- skills rassemble, sans doublon, spécialités, domaines, compétences techniques,
+  pédagogiques et outils.
+- certifications, education, languages et experiences reprennent uniquement les éléments cités ; les
+  formations dispensées vont dans la description de l'expérience correspondante.
+- Conserve les noms et intitulés réellement écrits. Signale une ambiguïté dans warnings.
+- Réponse compacte : summary <= 300 caractères ; <= 20 skills, 15 certifications, 10 expériences,
+  10 formations et 10 warnings. Ne recopie jamais le CV.
 
 --- DÉBUT DU TEXTE DU CV ---
 {cv_text}
@@ -65,7 +70,8 @@ def extract_labeled_identity(text: str) -> TrainerCVExtractionResult:
 
 
 def _limit_text(text: str) -> tuple[str, str | None]:
-    limit = max(settings.local_llm_max_tokens * 2, 4_000)
+    text = "\n".join(line.strip() for line in text.splitlines() if line.strip())
+    limit = settings.cv_llm_max_input_chars
     if len(text) <= limit:
         return text, None
     head_size = int(limit * 0.75)
@@ -87,7 +93,11 @@ def _apply_deterministic_fallback(
                 email = None
             if email:
                 changes["email"] = email
-    full_name = _label_value(text, r"Nom\s+et\s+Prénom", ["Nationalité", "Date et lieu de Naissance"])
+    full_name = _label_value(
+        text,
+        r"Nom\s+et\s+Prénom",
+        ["Nationalité", "Date et lieu de Naissance"],
+    )
     if result.full_name is None and full_name:
         changes["full_name"] = full_name
     birth = _label_value(text, r"Date\s+et\s+lieu\s+de\s+Naissance", [r"N.?CIN/Passeport", "Mail"])

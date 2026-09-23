@@ -1,16 +1,22 @@
 import { apiRequest } from "@/lib/api";
-import type { Trainer, TrainerCv, TrainerInput, TrainerList } from "@/types/trainer";
+import type { Trainer, TrainerCv, TrainerCvList, TrainerInput, TrainerList } from "@/types/trainer";
 import type { TrainingCase } from "@/types/training-case";
 
-export function getTrainers(search = "", includeInactive = false): Promise<TrainerList> {
+export function getTrainers(search = "", includeInactive = false, specialty = ""): Promise<TrainerList> {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (includeInactive) params.set("include_inactive", "true");
+  if (specialty) params.set("specialty", specialty);
   return apiRequest(`/api/trainers?${params.toString()}`);
 }
 
 export function getTrainer(id: string): Promise<Trainer> {
   return apiRequest(`/api/trainers/${id}`);
+}
+
+export function getTrainerCvUrl(id: string): string {
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  return `${baseUrl}/api/trainers/${id}/cv`;
 }
 
 export function createTrainer(input: TrainerInput): Promise<Trainer> {
@@ -42,7 +48,13 @@ export function extractTrainerCv(id: string): Promise<TrainerCv> {
 }
 
 export function getTrainerCv(id: string): Promise<TrainerCv> {
-  return apiRequest(`/api/trainer-cvs/${id}`);
+  // This endpoint is polled while Ollama analyses a CV. Never reuse a cached
+  // UPLOADED/AI_ANALYSIS_PENDING response after the durable state has changed.
+  return apiRequest(`/api/trainer-cvs/${id}`, { cache: "no-store" });
+}
+
+export function getTrainerCvs(): Promise<TrainerCvList> {
+  return apiRequest("/api/trainer-cvs?page=1&page_size=20", { cache: "no-store" });
 }
 
 export function validateTrainerCv(id: string, input: TrainerInput): Promise<Trainer> {

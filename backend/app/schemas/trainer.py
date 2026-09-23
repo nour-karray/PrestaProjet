@@ -124,6 +124,7 @@ class TrainerResponse(TrainerFields):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    cv_id: UUID | None = None
     is_active: bool
     created_at: datetime
     updated_at: datetime

@@ -55,6 +55,8 @@ export type TrainingProgram = {
   practice_total_minutes: number;
   total_minutes: number;
   days: TrainingProgramDay[];
+  pedagogical_warning?: string | null;
+  pedagogical_correction_performed?: boolean;
 };
 
 export type ProgramMetadataInput = {
