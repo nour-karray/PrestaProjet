@@ -1,22 +1,23 @@
 spring:
+  config:
+    import: optional:file:../.env[.properties]
   application:
     name: TrainFlow AI
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:trainflow}}
     username: ${POSTGRES_USER:trainflow}
     password: ${POSTGRES_PASSWORD:}
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
     generate-ddl: false
     open-in-view: false
   sql:
     init:
       mode: never
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: always
 
 server:
   port: 8080

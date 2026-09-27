@@ -8,7 +8,7 @@ tarification et documents PDF.
 
 ## Architecture
 
-- `backend/` : socle Spring Boot de migration, exposé temporairement sur le port 8080 ;
+- `backend/` : Spring Boot en migration progressive, avec Companies/Contacts sur le port 8080 ;
 - `backend-python/` : API FastAPI historique, toujours utilisée par le frontend sur le port 8000 ;
 - `frontend/` : Next.js, TypeScript et App Router ;
 - `storage/` : CV et documents générés, exclus de Git ;
