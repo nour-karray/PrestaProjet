@@ -8,15 +8,15 @@ if not exist ".env" (
   exit /b 1
 )
 
-if not exist "backend\.venv\Scripts\python.exe" (
-  python -m venv "backend\.venv"
+if not exist "backend-python\.venv\Scripts\python.exe" (
+  python -m venv "backend-python\.venv"
   if errorlevel 1 exit /b 1
 )
 
 echo Installation du backend...
-"backend\.venv\Scripts\python.exe" -m pip install --upgrade pip
+"backend-python\.venv\Scripts\python.exe" -m pip install --upgrade pip
 if errorlevel 1 exit /b 1
-"backend\.venv\Scripts\python.exe" -m pip install -e "backend[dev]"
+"backend-python\.venv\Scripts\python.exe" -m pip install -e "backend-python[dev]"
 if errorlevel 1 exit /b 1
 
 echo Installation du frontend...
@@ -24,7 +24,7 @@ call npm.cmd --prefix frontend install
 if errorlevel 1 exit /b 1
 
 echo Migration de la base...
-pushd backend
+pushd backend-python
 ".venv\Scripts\python.exe" -m alembic upgrade head
 if errorlevel 1 (
   popd

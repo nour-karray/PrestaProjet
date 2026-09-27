@@ -4,8 +4,8 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "PrestaCode",
-  description: "Application de gestion des formations professionnelles",
+  title: "TrainFlow AI",
+  description: "AI-assisted Training Management Platform",
   icons: { icon: "/logo.svg" },
 };
 

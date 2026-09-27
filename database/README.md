@@ -1,6 +1,6 @@
 # Base PostgreSQL portable
 
-Le fichier `prestacode-schema.sql` contient la structure complète de PostgreSQL.
+Le fichier `trainflow-schema.sql` contient la structure complète de PostgreSQL.
 `alembic-version.sql` conserve la version des migrations. Les données de
 démonstration sont générées par le script officiel du projet. Aucun texte de CV,
 document stocké, mot de passe local ou renseignement personnel n’est publié.
@@ -10,29 +10,26 @@ document stocké, mot de passe local ou renseignement personnel n’est publié.
 Créer une base vide puis exécuter :
 
 ```powershell
-psql -h localhost -U prestacode -d prestacode -f database\prestacode-schema.sql
-psql -h localhost -U prestacode -d prestacode -f database\alembic-version.sql
+psql -h localhost -U trainflow -d trainflow -f database\trainflow-schema.sql
+psql -h localhost -U trainflow -d trainflow -f database\alembic-version.sql
 ```
 
 Générer ensuite les données de démonstration :
 
 ```powershell
-cd backend
+cd backend-python
 $env:SEED_DEMO_DATA="true"
-$env:DEMO_ADMIN_EMAIL="admin@formation.local"
-$env:DEMO_ADMIN_PASSWORD="Admin123!"
+$env:DEMO_ADMIN_EMAIL="demo@example.test"
+$env:DEMO_ADMIN_PASSWORD="<choose-a-strong-password>"
 .\.venv\Scripts\python.exe -m app.db.seed
 ```
 
-Le compte généré est :
-
-- email : `admin@formation.local`
-- mot de passe : `Admin123!`
+Demo credentials are not provided in the repository. Define your own values before enabling demo data seeding.
 
 Pour appliquer de futures migrations après restauration :
 
 ```powershell
-cd backend
+cd backend-python
 .\.venv\Scripts\python.exe -m alembic upgrade head
 ```
 

@@ -50,7 +50,7 @@ export default function LoginPage() {
         <button type="submit" disabled={loginMutation.isPending} className="login-submit">{loginMutation.isPending ? "Connexion en cours…" : "Se connecter"}</button>
       </form>
       <p className="auth-security">Accès réservé aux utilisateurs autorisés</p>
-      <p className="auth-copyright">© {new Date().getFullYear()} PrestaCode. Tous droits réservés.</p>
+      <p className="auth-copyright">© {new Date().getFullYear()} TrainFlow AI. Tous droits réservés.</p>
     </div>
   </AuthLayout>;
 }

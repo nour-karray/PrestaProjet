@@ -53,7 +53,7 @@ export function AppSidebar({
   const initials = name.split(/\s+/).filter(Boolean).map((part) => part[0]).slice(0, 2).join("").toUpperCase() || "A";
   return <aside className={`app-sidebar ${open ? "sidebar-open" : ""} ${collapsed ? "sidebar-collapsed" : ""}`}>
     <div className="sidebar-brand-row">
-      <Link href="/tableau-de-bord" className="brand" onClick={onClose}><span className="brand-mark"><Icon name="book" /></span><span>PrestaCode<small>Gestion des formations</small></span></Link>
+      <Link href="/tableau-de-bord" className="brand" onClick={onClose}><span className="brand-mark"><Icon name="book" /></span><span>TrainFlow AI<small>Gestion intelligente des formations</small></span></Link>
       <button type="button" aria-label={collapsed ? "Développer le menu" : "Réduire le menu"} onClick={onToggleCollapse}>{collapsed ? "»" : "«"}</button>
     </div>
     <nav aria-label="Navigation principale">

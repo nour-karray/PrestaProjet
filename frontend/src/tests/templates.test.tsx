@@ -18,7 +18,7 @@ const administrator = {
   last_login_at: null,
 };
 
-describe("Templates Formation Center", () => {
+describe("Templates TrainFlow AI", () => {
   it("ouvre directement la liste depuis le lien Dossiers", () => {
     render(<AppSidebar pathname="/dossiers/nouveau" open collapsed={false} administrator={administrator} onClose={vi.fn()} onToggleCollapse={vi.fn()} />);
     expect(screen.getByRole("link", { name: "Dossiers" })).toHaveAttribute("href", "/dossiers");

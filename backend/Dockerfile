@@ -1,16 +1,12 @@
-FROM python:3.12-slim
+FROM maven:3.9-eclipse-temurin-21 AS builder
+WORKDIR /workspace
+COPY pom.xml ./
+RUN mvn -B dependency:go-offline
+COPY src ./src
+RUN mvn -B package -DskipTests
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
-
+FROM eclipse-temurin:21-jre
 WORKDIR /app
-
-COPY pyproject.toml ./
-COPY app ./app
-COPY alembic ./alembic
-COPY alembic.ini ./
-RUN pip install --no-cache-dir .
-
-EXPOSE 8000
-
-CMD ["sh", "-c", "python -m alembic upgrade head && python -m app.db.seed && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+COPY --from=builder /workspace/target/trainflow-backend-*.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

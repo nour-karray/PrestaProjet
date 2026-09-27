@@ -45,7 +45,7 @@ describe("Page de connexion", () => {
             administrator: {
               id: "a13d9c48-52e5-4ec0-8720-413853635195",
               full_name: "Administrateur",
-              email: "admin@formation.local",
+email: "admin@example.test",
               is_active: true,
               created_at: "2026-07-24T12:00:00Z",
               last_login_at: "2026-07-24T12:00:00Z",
@@ -63,9 +63,9 @@ describe("Page de connexion", () => {
 
     await user.type(
       screen.getByLabelText("Adresse email"),
-      "admin@formation.local",
+      "admin@example.test",
     );
-    await user.type(screen.getByLabelText("Mot de passe"), "Admin123!");
+    await user.type(screen.getByLabelText("Mot de passe"), "TestOnly-StrongPassword!42");
     await user.click(screen.getByRole("button", { name: "Se connecter" }));
 
     await waitFor(() => {

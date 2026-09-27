@@ -2,13 +2,13 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-training_management}
-      POSTGRES_USER: ${POSTGRES_USER:-training_admin}
+      POSTGRES_DB: ${POSTGRES_DB:-trainflow}
+      POSTGRES_USER: ${POSTGRES_USER:-trainflow}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be configured}
     healthcheck:
       test:
         - CMD-SHELL
-        - pg_isready -U ${POSTGRES_USER:-training_admin} -d ${POSTGRES_DB:-training_management}
+        - pg_isready -U ${POSTGRES_USER:-trainflow} -d ${POSTGRES_DB:-trainflow}
       interval: 5s
       timeout: 5s
       retries: 10
@@ -17,11 +17,11 @@ services:
     ports:
       - "${POSTGRES_HOST_PORT:-5432}:5432"
 
-  backend:
+  trainflow-backend-python:
     build:
-      context: ./backend
+      context: ./backend-python
     environment:
-      DATABASE_URL: ${DATABASE_URL_DOCKER:-postgresql+psycopg://${POSTGRES_USER:-training_admin}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-training_management}}
+      DATABASE_URL: ${DATABASE_URL_DOCKER:-postgresql+psycopg://${POSTGRES_USER:-trainflow}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-trainflow}}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be configured}
       AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
@@ -54,7 +54,20 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-  frontend:
+  trainflow-backend:
+    build:
+      context: ./backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-trainflow}
+      POSTGRES_USER: ${POSTGRES_USER:-trainflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be configured}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${SPRING_BACKEND_HOST_PORT:-8080}:8080"
+
+  trainflow-frontend:
     build:
       context: ./frontend
       args:
@@ -63,7 +76,7 @@ services:
       HOSTNAME: 0.0.0.0
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     depends_on:
-      backend:
+      trainflow-backend-python:
         condition: service_healthy
     healthcheck:
       test:

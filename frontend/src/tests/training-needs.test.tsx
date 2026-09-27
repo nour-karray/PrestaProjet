@@ -279,7 +279,7 @@ describe("Besoin du client", () => {
     await user.click(screen.getByRole("button", { name: "Enregistrer et générer le programme" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "La valeur du champ « duration_hours » est invalide.",
+      "Valeur invalide : Durée de la formation.",
     );
   });
 
