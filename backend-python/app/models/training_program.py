@@ -148,7 +148,6 @@ class TrainingProgramItem(Base):
             "training_program_day_id",
             "position",
             unique=True,
-            postgresql_where=parent_id.is_(None),
             sqlite_where=parent_id.is_(None),
         ),
         Index(
@@ -156,7 +155,6 @@ class TrainingProgramItem(Base):
             "parent_id",
             "position",
             unique=True,
-            postgresql_where=parent_id.is_not(None),
             sqlite_where=parent_id.is_not(None),
         ),
     )

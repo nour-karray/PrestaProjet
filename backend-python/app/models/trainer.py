@@ -18,7 +18,6 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -106,9 +105,7 @@ class TrainerCV(Base):
     extraction_model: Mapped[str | None] = mapped_column(String(120))
     extraction_duration_ms: Mapped[int | None] = mapped_column(Integer)
     raw_text: Mapped[str | None] = mapped_column(Text)
-    parsed_json: Mapped[dict[str, Any] | None] = mapped_column(
-        JSON().with_variant(JSONB, "postgresql")
-    )
+    parsed_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     extraction_error: Mapped[str | None] = mapped_column(Text)
     extraction_error_code: Mapped[str | None] = mapped_column(String(64))
     trainer: Mapped[Trainer | None] = relationship(back_populates="cvs")

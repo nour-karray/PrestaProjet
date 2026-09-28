@@ -79,7 +79,6 @@ class CompanyContact(Base):
             "uq_company_contacts_primary",
             company_id,
             unique=True,
-            postgresql_where=is_primary.is_(True),
             sqlite_where=is_primary.is_(True),
         ),
     )

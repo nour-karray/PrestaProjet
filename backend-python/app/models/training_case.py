@@ -4,7 +4,6 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Index, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -119,9 +118,7 @@ class ActivityLog(Base):
     action: Mapped[str] = mapped_column(String(80))
     entity_type: Mapped[str] = mapped_column(String(80))
     entity_id: Mapped[UUID | None]
-    details: Mapped[dict[str, Any]] = mapped_column(
-        JSON().with_variant(JSONB, "postgresql"), default=dict
-    )
+    details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     training_case: Mapped[TrainingCase | None] = relationship(back_populates="activities")
 
