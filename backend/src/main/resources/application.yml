@@ -18,11 +18,18 @@ spring:
   jackson:
     property-naming-strategy: SNAKE_CASE
     default-property-inclusion: always
+  servlet:
+    multipart:
+      max-file-size: ${MAX_CV_FILE_SIZE_MB:10}MB
+      max-request-size: ${MAX_CV_FILE_SIZE_MB:10}MB
 
 server:
   port: 8080
 
 trainflow:
+  storage:
+    cv-directory: ${CV_STORAGE_DIR:../storage/cvs}
+    max-cv-file-size-mb: ${MAX_CV_FILE_SIZE_MB:10}
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
   auth-cookie-secure: ${AUTH_COOKIE_SECURE:false}
   auth-cookie-same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
