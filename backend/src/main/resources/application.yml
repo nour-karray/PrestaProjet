@@ -21,3 +21,13 @@ spring:
 
 server:
   port: 8080
+
+trainflow:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  auth-cookie-secure: ${AUTH_COOKIE_SECURE:false}
+  auth-cookie-same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
+  jwt:
+    secret: ${JWT_SECRET}
+    algorithm: ${JWT_ALGORITHM:HS256}
+    access-token-expire-minutes: ${ACCESS_TOKEN_EXPIRE_MINUTES:30}
+    refresh-token-expire-days: ${REFRESH_TOKEN_EXPIRE_DAYS:7}

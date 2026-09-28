@@ -17,6 +17,21 @@ Les tests couvrent l'authentification, les cookies, les jetons invalides ou
 expirés, les comptes inactifs, les fichiers, la génération documentaire et les
 transactions PostgreSQL.
 
+## Authentification Spring Boot (phase 3)
+
+Le backend Spring réutilise la table `administrators` et les empreintes Argon2id
+existantes sans migration de données. Les JWT HS256 conservent les claims
+`sub`, `type`, `iat` et `exp`. Les jetons d'accès et de renouvellement sont
+transportés exclusivement dans les cookies `access_token` et `refresh_token`,
+avec `HttpOnly`, `Path=/`, `SameSite=Lax` par défaut et `Secure` configurable.
+
+Le CORS autorise uniquement l'origine exacte définie par `FRONTEND_URL`, avec
+les credentials activés. La protection CSRF Spring est temporairement
+désactivée pour préserver le contrat du frontend actuel, qui n'envoie aucun
+jeton anti-CSRF. `SameSite=Lax` réduit l'exposition aux requêtes cross-site mais
+ne constitue pas une protection CSRF complète. Un protocole CSRF explicite doit
+être ajouté avant la bascule définitive du frontend vers le backend Spring.
+
 ## Risques résiduels
 
 - un seul profil administrateur : pas encore de contrôle d'accès multi-rôles ;
