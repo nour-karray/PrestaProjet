@@ -18,21 +18,26 @@ class TrainingCaseRepository:
         self.session = session
 
     def next_reference(self, year: int) -> str:
-        if self.session.get_bind().dialect.name == "postgresql":
-            self.session.execute(
-                text("SELECT pg_advisory_xact_lock(:lock_key)"),
-                {"lock_key": 4_200_000 + year},
-            )
-        counter = self.session.get(TrainingCaseCounter, year, with_for_update=True)
-        if counter is None:
-            counter = TrainingCaseCounter(year=year, next_value=2)
-            self.session.add(counter)
-            number = 1
-        else:
-            number = counter.next_value
-            counter.next_value += 1
-        self.session.flush()
-        return f"TR-{year}-{number:06d}"
+        dialect = self.session.get_bind().dialect.name
+        lock_name = f"trainflow_training_case_reference_{year}"
+        if dialect == "mysql":
+            acquired = self.session.scalar(text("SELECT GET_LOCK(:name, 10)"), {"name": lock_name})
+            if acquired != 1:
+                raise RuntimeError("Impossible de verrouiller le compteur des dossiers.")
+        try:
+            counter = self.session.get(TrainingCaseCounter, year, with_for_update=True)
+            if counter is None:
+                counter = TrainingCaseCounter(year=year, next_value=2)
+                self.session.add(counter)
+                number = 1
+            else:
+                number = counter.next_value
+                counter.next_value += 1
+            self.session.flush()
+            return f"TR-{year}-{number:06d}"
+        finally:
+            if dialect == "mysql":
+                self.session.execute(text("SELECT RELEASE_LOCK(:name)"), {"name": lock_name})
 
     def add(self, training_case: TrainingCase) -> None:
         self.session.add(training_case)

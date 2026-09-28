@@ -8,8 +8,8 @@ socle Spring Boot est disponible séparément sur le port 8080.
 - Python 3.12 ;
 - JDK 21 cible et Maven 3.9 ou supérieur ;
 - Node.js 20.9 ou supérieur ;
-- PostgreSQL 12 ou supérieur ;
-- une base et un rôle PostgreSQL dédiés à l'application.
+- MySQL 8.x ;
+- une base et un utilisateur MySQL dédiés à l'application.
 
 ## Configuration
 
@@ -23,10 +23,10 @@ Dans `.env`, remplacez tous les marqueurs `<...>`. `DATABASE_URL` doit viser
 `localhost`, par exemple :
 
 ```dotenv
-DATABASE_URL=postgresql+psycopg://trainflow:mot_de_passe@localhost:5432/trainflow
+DATABASE_URL=mysql+pymysql://trainflow:mot_de_passe@localhost:3306/trainflow?charset=utf8mb4
 ```
 
-Si le port `5432` est déjà occupé (par exemple par Odoo), démarrez PostgreSQL
+Si le port `3306` est déjà occupé, démarrez MySQL
 sur un autre port, puis utilisez ce port dans `DATABASE_URL`. Générez un
 `JWT_SECRET` aléatoire d'au moins 32 caractères. Ne versionnez jamais `.env`.
 
@@ -46,8 +46,13 @@ Demo credentials are not provided in the repository. Define your own values befo
 .\setup-local.cmd
 ```
 
-Cette commande installe les dépendances, applique les migrations et exécute le
-seed. Si `SEED_DEMO_DATA=false`, aucune donnée de démonstration n'est créée.
+Initialisez une seule fois la base vide avec `database/mysql-init/001-schema.sql`,
+puis lancez cette commande. Elle installe les dépendances et exécute le seed.
+Si `SEED_DEMO_DATA=false`, aucune donnée de démonstration n'est créée.
+
+```powershell
+cmd /c "mysql -h localhost -P 3306 -u trainflow -p trainflow ^< database\mysql-init\001-schema.sql"
+```
 
 ## Démarrage
 
@@ -60,7 +65,6 @@ Ou manuellement, dans un premier terminal :
 ```powershell
 cd backend-python
 .\.venv\Scripts\Activate.ps1
-python -m alembic upgrade head
 python -m app.db.seed
 python -m uvicorn app.main:app --reload --port 8000
 ```
@@ -82,14 +86,14 @@ mvn package
 java -jar target\trainflow-backend-0.1.0-SNAPSHOT.jar
 ```
 
-Sa route de santé est `http://localhost:8080/health`. Aucun domaine métier n'y
-est encore migré et aucune migration de base n'est exécutée.
+Sa route de santé est `http://localhost:8080/health`. Auth et Companies/Contacts
+y sont migrés ; aucune migration automatique de base n'est exécutée.
 
 Ouvrez http://localhost:3000. Vérifiez l'API avec
 http://localhost:8000/health ; la réponse attendue est `{"status":"ok"}`.
 
 ## Arrêt
 
-Utilisez `Ctrl+C` dans chaque terminal. PostgreSQL peut ensuite être arrêté avec
+Utilisez `Ctrl+C` dans chaque terminal. MySQL peut ensuite être arrêté avec
 l'outil ou le service Windows utilisé pour le lancer.
 

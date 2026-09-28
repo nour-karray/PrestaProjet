@@ -1,37 +1,21 @@
-# Base PostgreSQL portable
+# Base MySQL portable
 
-Le fichier `trainflow-schema.sql` contient la structure complète de PostgreSQL.
-`alembic-version.sql` conserve la version des migrations. Les données de
-démonstration sont générées par le script officiel du projet. Aucun texte de CV,
-document stocké, mot de passe local ou renseignement personnel n’est publié.
+Le schéma courant de TrainFlow AI se trouve dans
+`mysql-init/001-schema.sql`. Il cible MySQL 8.x, utilise `CHAR(36)` pour les
+UUID, `JSON`, `DECIMAL` et des timestamps UTC en `DATETIME(6)`.
 
-## Restauration
-
-Créer une base vide puis exécuter :
+Pour initialiser une base locale vide :
 
 ```powershell
-psql -h localhost -U trainflow -d trainflow -f database\trainflow-schema.sql
-psql -h localhost -U trainflow -d trainflow -f database\alembic-version.sql
+cmd /c "mysql -h localhost -P 3306 -u trainflow -p trainflow ^< database\mysql-init\001-schema.sql"
 ```
 
-Générer ensuite les données de démonstration :
+Le dossier `archive/` conserve les exports PostgreSQL historiques. Ils ne sont
+pas exécutés par l'application et ne doivent pas être importés dans MySQL.
 
-```powershell
-cd backend-python
-$env:SEED_DEMO_DATA="true"
-$env:DEMO_ADMIN_EMAIL="demo@example.test"
-$env:DEMO_ADMIN_PASSWORD="<choose-a-strong-password>"
-.\.venv\Scripts\python.exe -m app.db.seed
-```
+Pour conserver les données existantes, suivez
+[`docs/mysql-migration.md`](../docs/mysql-migration.md) et utilisez le script de
+copie non destructif avant d'arrêter l'ancienne base.
 
-Demo credentials are not provided in the repository. Define your own values before enabling demo data seeding.
-
-Pour appliquer de futures migrations après restauration :
-
-```powershell
-cd backend-python
-.\.venv\Scripts\python.exe -m alembic upgrade head
-```
-
-Les fichiers `.env`, `storage/`, les CV originaux et les documents générés ne
-doivent pas être publiés dans le dépôt.
+Flyway n'est pas encore actif. Hibernate utilise exclusivement
+`ddl-auto=validate`.

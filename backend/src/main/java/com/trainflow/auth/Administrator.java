@@ -8,11 +8,13 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "administrators")
 public class Administrator {
-    @Id private UUID id;
+    @Id @JdbcTypeCode(SqlTypes.VARCHAR) @Column(columnDefinition = "char(36)") private UUID id;
     @Column(name = "full_name", nullable = false, length = 150) private String fullName;
     @Column(nullable = false, unique = true, length = 320) private String email;
     @Column(name = "password_hash", nullable = false, length = 255) private String passwordHash;

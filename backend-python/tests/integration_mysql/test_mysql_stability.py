@@ -6,7 +6,6 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from alembic.runtime.migration import MigrationContext
 from app.core.config import settings
 from app.models.administrator import Administrator
 from app.models.company import Company, CompanyContact
@@ -21,17 +20,15 @@ from app.services.training_document import TrainingDocumentService
 from app.storage.documents import DocumentStorage
 from app.tests.test_training_documents import make_ready_case
 
-EXPECTED_REVISION = "20260730_0012"
 
-
-class _PostgresTextExtractor(CVTextExtractor):
+class _MySqlTextExtractor(CVTextExtractor):
     def extract(self, path: Path, mime_type: str) -> CVTextExtractionResult:
         del path, mime_type
         text = "Karim Test formateur professionnel karim@example.com Tunis Tunisie"
         return CVTextExtractionResult(text, 1, len(text))
 
 
-class _PostgresLLM:
+class _MySqlLLM:
     model_name: str | None = "integration-model"
 
     def __init__(self, unavailable: bool = False) -> None:
@@ -53,39 +50,34 @@ class _PostgresLLM:
         }
 
 
-def test_migrations_are_at_head(postgres_session: Session) -> None:
-    context = MigrationContext.configure(postgres_session.connection())
-    assert context.get_current_revision() == EXPECTED_REVISION
-
-
 def test_relations_reference_transaction_and_uniqueness(
-    postgres_session: Session,
+    mysql_session: Session,
 ) -> None:
     administrator = Administrator(
-        full_name="Administrateur PostgreSQL",
-        email=f"postgres-{uuid4().hex}@example.test",
+        full_name="Administrateur MySQL",
+        email=f"mysql-{uuid4().hex}@example.test",
         password_hash="not-used-in-this-integration-test",
         is_active=True,
     )
-    company = Company(name=f"Entreprise PostgreSQL {uuid4().hex}")
-    contact = CompanyContact(company=company, full_name="Contact PostgreSQL", is_primary=True)
-    postgres_session.add_all([administrator, company, contact])
-    postgres_session.flush()
+    company = Company(name=f"Entreprise MySQL {uuid4().hex}")
+    contact = CompanyContact(company=company, full_name="Contact MySQL", is_primary=True)
+    mysql_session.add_all([administrator, company, contact])
+    mysql_session.flush()
 
-    repository = TrainingCaseRepository(postgres_session)
+    repository = TrainingCaseRepository(mysql_session)
     reference = repository.next_reference(2099)
     training_case = TrainingCase(
         reference=reference,
         company_id=company.id,
         primary_contact_id=contact.id,
-        theme="Stabilisation PostgreSQL",
+        theme="Stabilisation MySQL",
         created_by=administrator.id,
     )
     repository.add(training_case)
-    postgres_session.flush()
-    postgres_session.expire_all()
+    mysql_session.flush()
+    mysql_session.expire_all()
 
-    persisted = postgres_session.scalar(
+    persisted = mysql_session.scalar(
         select(TrainingCase).where(TrainingCase.id == training_case.id)
     )
     assert persisted is not None
@@ -100,35 +92,35 @@ def test_relations_reference_transaction_and_uniqueness(
         theme="Référence dupliquée",
         created_by=administrator.id,
     )
-    postgres_session.add(duplicate)
+    mysql_session.add(duplicate)
     with pytest.raises(IntegrityError):
-        postgres_session.flush()
-    postgres_session.rollback()
+        mysql_session.flush()
+    mysql_session.rollback()
 
     transient_name = f"Transaction annulée {uuid4().hex}"
-    postgres_session.add(Company(name=transient_name))
-    postgres_session.flush()
-    postgres_session.rollback()
-    assert postgres_session.scalar(select(Company).where(Company.name == transient_name)) is None
+    mysql_session.add(Company(name=transient_name))
+    mysql_session.flush()
+    mysql_session.rollback()
+    assert mysql_session.scalar(select(Company).where(Company.name == transient_name)) is None
 
 
-def test_document_generation_on_postgresql(
-    postgres_session: Session,
+def test_document_generation_on_mysql(
+    mysql_session: Session,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     administrator = Administrator(
-        full_name="Administrateur Documents PostgreSQL",
+        full_name="Administrateur Documents MySQL",
         email=f"documents-{uuid4().hex}@example.test",
         password_hash="not-used-in-this-integration-test",
         is_active=True,
     )
-    postgres_session.add(administrator)
-    postgres_session.flush()
-    training_case = make_ready_case(postgres_session, administrator)
+    mysql_session.add(administrator)
+    mysql_session.flush()
+    training_case = make_ready_case(mysql_session, administrator)
     monkeypatch.setattr(settings, "document_storage_path", tmp_path)
 
-    service = TrainingDocumentService(postgres_session, DocumentStorage(tmp_path))
+    service = TrainingDocumentService(mysql_session, DocumentStorage(tmp_path))
     service.initialize(training_case.id, administrator.id)
     result = service.generate_all(training_case.id, administrator.id)
 
@@ -141,19 +133,19 @@ def test_document_generation_on_postgresql(
     )
 
 
-def test_cv_pipeline_fallback_retry_and_human_validation_on_postgresql(
-    postgres_session: Session,
+def test_cv_pipeline_fallback_retry_and_human_validation_on_mysql(
+    mysql_session: Session,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     administrator = Administrator(
-        full_name="Administrateur CV PostgreSQL",
+        full_name="Administrateur CV MySQL",
         email=f"cv-{uuid4().hex}@example.test",
         password_hash="not-used",
         is_active=True,
     )
-    postgres_session.add(administrator)
-    postgres_session.flush()
+    mysql_session.add(administrator)
+    mysql_session.flush()
     monkeypatch.setattr(settings, "cv_storage_dir", tmp_path)
     stored = f"{uuid4()}.pdf"
     (tmp_path / stored).write_bytes(b"%PDF-integration")
@@ -164,36 +156,36 @@ def test_cv_pipeline_fallback_retry_and_human_validation_on_postgresql(
         file_size=16,
         sha256=uuid4().hex.ljust(64, "0"),
     )
-    postgres_session.add(cv)
-    postgres_session.commit()
+    mysql_session.add(cv)
+    mysql_session.commit()
 
     failed = TrainerCVExtractionService(
-        postgres_session, _PostgresLLM(True), _PostgresTextExtractor()
+        mysql_session, _MySqlLLM(True), _MySqlTextExtractor()
     ).extract(cv.id, administrator.id)
     assert failed.extraction_status == TrainerCVExtractionStatus.REVIEW_REQUIRED.value
     assert failed.extraction_error_code == "LLM_UNAVAILABLE"
     assert failed.raw_text
     assert (
-        postgres_session.scalar(
+        mysql_session.scalar(
             select(Trainer).where(Trainer.email == "karim@example.com")
         )
         is None
     )
 
     retried = TrainerCVExtractionService(
-        postgres_session, _PostgresLLM(), _PostgresTextExtractor()
+        mysql_session, _MySqlLLM(), _MySqlTextExtractor()
     ).extract(cv.id, administrator.id)
     assert retried.extraction_status == TrainerCVExtractionStatus.REVIEW_REQUIRED.value
     assert retried.extraction_error_code is None
     assert retried.parsed_json is not None
 
-    trainer = CVService(postgres_session).validate(
+    trainer = CVService(mysql_session).validate(
         cv.id,
         TrainerCreate(full_name="Karim Test", email="karim@example.com"),
         administrator.id,
     )
     assert trainer.id == cv.trainer_id
     assert cv.extraction_status == TrainerCVExtractionStatus.VALIDATED.value
-    assert postgres_session.scalar(
+    assert mysql_session.scalar(
         select(Trainer).where(Trainer.email == "karim@example.com")
     ) is not None

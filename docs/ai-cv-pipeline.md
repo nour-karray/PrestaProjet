@@ -24,11 +24,10 @@ Une panne Ollama conserve le fichier et le texte. L’administrateur peut
 réessayer l’analyse, continuer manuellement ou choisir un autre fichier.
 Le retry réutilise le même import et le texte déjà extrait.
 
-## PostgreSQL
+## MySQL
 
-Les migrations doivent être appliquées jusqu’à `20260730_0012`. La migration
-0012 corrige la contrainte PostgreSQL des statuts sans modifier la migration
-0011 déjà appliquée.
+Le schéma `database/mysql-init/001-schema.sql` contient les statuts résilients
+du pipeline. Hibernate valide ce schéma sans le modifier.
 
 ## Limite OCR
 
@@ -65,12 +64,12 @@ la compatibilité avec l'installation Ollama existante.
 Configurer une base dédiée dont le nom se termine par `_test` :
 
 ```powershell
-$env:POSTGRES_TEST_DATABASE_URL="postgresql+psycopg://USER:PASSWORD@localhost:5432/trainflow_test"
+$env:MYSQL_TEST_DATABASE_URL="mysql+pymysql://USER:PASSWORD@localhost:3306/trainflow_test?charset=utf8mb4"
 cd backend-python
-pytest -q tests/integration_postgres
+pytest -q tests/integration_mysql
 ```
 
-La suite vérifie les migrations, la conservation du texte, la panne LLM, le
+La suite vérifie le schéma, la conservation du texte, la panne LLM, le
 retry, l'absence de formateur avant revue, la validation humaine et le lien
 entre le CV et le formateur.
 

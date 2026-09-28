@@ -23,13 +23,8 @@ echo Installation du frontend...
 call npm.cmd --prefix frontend install
 if errorlevel 1 exit /b 1
 
-echo Migration de la base...
+echo Verification et initialisation des donnees applicatives...
 pushd backend-python
-".venv\Scripts\python.exe" -m alembic upgrade head
-if errorlevel 1 (
-  popd
-  exit /b 1
-)
 ".venv\Scripts\python.exe" -m app.db.seed
 if errorlevel 1 (
   popd
@@ -39,4 +34,5 @@ popd
 
 echo.
 echo Installation locale terminee. Lancez ensuite : start-local.cmd
+echo Le schema MySQL doit avoir ete initialise avec database\mysql-init\001-schema.sql.
 

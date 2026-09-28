@@ -11,11 +11,15 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "company_contacts")
 public class CompanyContact {
     @Id
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(columnDefinition = "char(36)")
     private UUID id;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "company_id", nullable = false)

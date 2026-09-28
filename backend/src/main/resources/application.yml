@@ -4,9 +4,9 @@ spring:
   application:
     name: TrainFlow AI
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:trainflow}}
-    username: ${POSTGRES_USER:trainflow}
-    password: ${POSTGRES_PASSWORD:}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:trainflow}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC}
+    username: ${MYSQL_USER:trainflow}
+    password: ${MYSQL_PASSWORD:}
   jpa:
     hibernate:
       ddl-auto: validate

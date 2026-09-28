@@ -7,7 +7,7 @@ Next.js / React / TypeScript
         ↓ REST API :8000
 FastAPI historique (backend-python/)
         ↓
-PostgreSQL
+MySQL 8.x
 
 Spring Boot (backend/) :8080
         ├── GET /health
@@ -42,13 +42,13 @@ Les contrôleurs portent HTTP, les services les règles métier, les repositorie
 la persistance et les DTO les contrats REST. Les entités JPA ne seront pas
 exposées directement.
 
-## PostgreSQL
+## MySQL
 
-La base existante reste la source de vérité. Spring mappe uniquement
+MySQL est la nouvelle source de vérité. Spring mappe uniquement
 `administrators`, `companies` et `company_contacts`. Hibernate utilise `ddl-auto=validate`,
 `generate-ddl=false` et `spring.sql.init.mode=never` : aucune table ou migration
-n'est créée. Flyway sera introduit ultérieurement avec une baseline correspondant
-au schéma Alembic existant.
+n'est créée. Le schéma initial est fourni dans `database/mysql-init/`. Flyway
+sera introduit après stabilisation des entités avec une nouvelle baseline MySQL.
 
 ## Compatibilité Companies / Contacts
 

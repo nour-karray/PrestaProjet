@@ -13,11 +13,15 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "companies")
 public class Company {
     @Id
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(columnDefinition = "char(36)")
     private UUID id;
     @Column(nullable = false, length = 200)
     private String name;

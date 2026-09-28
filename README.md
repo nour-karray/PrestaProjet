@@ -8,7 +8,7 @@ tarification et documents PDF.
 
 ## Architecture
 
-- `backend/` : Spring Boot en migration progressive, avec Companies/Contacts sur le port 8080 ;
+- `backend/` : Spring Boot en migration progressive, avec Auth et Companies/Contacts sur le port 8080 ;
 - `backend-python/` : API FastAPI historique, toujours utilisée par le frontend sur le port 8000 ;
 - `frontend/` : Next.js, TypeScript et App Router ;
 - `storage/` : CV et documents générés, exclus de Git ;
@@ -22,6 +22,7 @@ Le mode local sans Docker est le mode conseillé pour le développement Windows 
 - [Démarrage local sans Docker](docs/local-development.md)
 - [Démarrage avec Docker](docs/docker.md)
 - [Pipeline IA et CV](docs/ai-cv-pipeline.md)
+- [Migration MySQL](docs/mysql-migration.md)
 
 Copiez d'abord `.env.example` vers `.env`, puis remplacez tous les marqueurs
 `<...>`. Aucun identifiant administrateur n'est fourni dans le dépôt. La création
@@ -56,12 +57,12 @@ mvn test
 mvn package
 ```
 
-Tests PostgreSQL réels, uniquement sur une base dédiée dont le nom se termine
+Tests MySQL réels, uniquement sur une base dédiée dont le nom se termine
 par `_test` :
 
 ```powershell
-$env:POSTGRES_TEST_DATABASE_URL="postgresql+psycopg://user:password@localhost:5432/trainflow_test"
-.\.venv\Scripts\python.exe -m pytest -q tests/integration_postgres
+$env:MYSQL_TEST_DATABASE_URL="mysql+pymysql://user:password@localhost:3306/trainflow_test?charset=utf8mb4"
+.\.venv\Scripts\python.exe -m pytest -q tests/integration_mysql
 ```
 
 Frontend :

@@ -3,7 +3,7 @@
 ## Corrections appliquées
 
 - suppression des identifiants de démonstration codés en dur ;
-- secrets PostgreSQL et JWT obligatoires, avec un JWT d'au moins 32 caractères ;
+- secrets MySQL et JWT obligatoires, avec un JWT d'au moins 32 caractères ;
 - seed désactivé par défaut et soumis à une configuration explicite ;
 - cookies d'authentification `HttpOnly`, `SameSite=Lax` et option `Secure` ;
 - mots de passe hachés avec Argon2 ;
@@ -11,11 +11,11 @@
 - noms de stockage générés côté serveur et protection contre la traversée de chemin ;
 - CV, PDF, secrets, bases locales et artefacts de tests exclus de Git ;
 - erreurs API contrôlées sans exposer de trace interne ;
-- base de test PostgreSQL obligatoirement suffixée par `_test`.
+- base de test MySQL obligatoirement suffixée par `_test`.
 
 Les tests couvrent l'authentification, les cookies, les jetons invalides ou
 expirés, les comptes inactifs, les fichiers, la génération documentaire et les
-transactions PostgreSQL.
+transactions MySQL.
 
 ## Authentification Spring Boot (phase 3)
 
@@ -45,8 +45,8 @@ ne constitue pas une protection CSRF complète. Un protocole CSRF explicite doit
 ## Recommandations d'exploitation
 
 En production, activez HTTPS et `AUTH_COOKIE_SECURE=true`, placez l'API derrière
-un reverse proxy, limitez l'accès PostgreSQL au réseau nécessaire, utilisez un
-gestionnaire de secrets, sauvegardez PostgreSQL et `storage/`, puis testez
+un reverse proxy, limitez l'accès MySQL au réseau nécessaire, utilisez un
+gestionnaire de secrets, sauvegardez MySQL et `storage/`, puis testez
 régulièrement la restauration. Ne consignez jamais les mots de passe, JWT,
 chaînes de connexion ou contenus sensibles des CV.
 
