@@ -1,0 +1,2 @@
+package com.trainflow.trainingcase; import java.util.*; import org.springframework.data.jpa.repository.*; import org.springframework.data.repository.query.Param;
+public interface TrainingCaseRepository extends JpaRepository<TrainingCase,UUID>,JpaSpecificationExecutor<TrainingCase>{@Query("select c from TrainingCase c join fetch c.company left join fetch c.primaryContact left join fetch c.trainer where c.id=:id") Optional<TrainingCase> detailed(@Param("id")UUID id);}
