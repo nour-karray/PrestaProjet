@@ -17,5 +17,8 @@ Pour conserver les données existantes, suivez
 [`docs/mysql-migration.md`](../docs/mysql-migration.md) et utilisez le script de
 copie non destructif avant d'arrêter l'ancienne base.
 
-Flyway n'est pas encore actif. Hibernate utilise exclusivement
-`ddl-auto=validate`.
+Flyway est actif dans le backend Spring avec une baseline non destructive à la
+version `20260923.0017`. Une installation historique non vide reçoit uniquement
+la table de métadonnées Flyway : aucune table métier n'est recréée. Pour une
+base locale entièrement vide, appliquez d'abord `mysql-init/001-schema.sql`.
+Hibernate reste configuré exclusivement avec `ddl-auto=validate`.
