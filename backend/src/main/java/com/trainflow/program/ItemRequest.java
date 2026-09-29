@@ -1,0 +1,1 @@
+package com.trainflow.program; import jakarta.validation.constraints.*; import java.util.*; public record ItemRequest(@NotNull ProgramItemType itemType,UUID parentId,@NotBlank@Size(max=250)String title,String content,@Min(0)int theoryMinutes,@Min(0)int practiceMinutes,Set<PedagogicalMethod> methods){}

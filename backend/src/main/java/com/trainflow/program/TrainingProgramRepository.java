@@ -1,0 +1,2 @@
+package com.trainflow.program; import java.util.*; import org.springframework.data.jpa.repository.*; import org.springframework.data.repository.query.Param;
+public interface TrainingProgramRepository extends JpaRepository<TrainingProgram,UUID>{Optional<TrainingProgram> findByTrainingCaseId(UUID id);@Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)@Query("select p from TrainingProgram p where p.trainingCaseId=:id")Optional<TrainingProgram> locked(@Param("id")UUID id);}

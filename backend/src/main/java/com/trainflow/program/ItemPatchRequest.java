@@ -1,0 +1,1 @@
+package com.trainflow.program; import jakarta.validation.constraints.*; import java.util.*; public record ItemPatchRequest(@Size(min=1,max=250)String title,String content,@Min(0)Integer theoryMinutes,@Min(0)Integer practiceMinutes,Set<PedagogicalMethod> methods){}
