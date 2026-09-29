@@ -29,6 +29,8 @@ server:
 trainflow:
   storage:
     cv-directory: ${CV_STORAGE_DIR:../storage/cvs}
+    document-directory: ${DOCUMENT_STORAGE_PATH:../storage/documents}
+    max-document-size-mb: ${DOCUMENT_MAX_SIZE_MB:10}
     max-cv-file-size-mb: ${MAX_CV_FILE_SIZE_MB:10}
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
   auth-cookie-secure: ${AUTH_COOKIE_SECURE:false}
