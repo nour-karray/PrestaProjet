@@ -1,6 +1,6 @@
 # Développement local
 
-Pendant la migration, le frontend utilise encore FastAPI sur le port 8000. Le
+Le frontend utilise Spring Boot sur le port 8080. Le
 socle Spring Boot est disponible séparément sur le port 8080.
 
 ## Prérequis

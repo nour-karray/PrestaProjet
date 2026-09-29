@@ -9,7 +9,7 @@ tarification et documents PDF.
 ## Architecture
 
 - `backend/` : Spring Boot en migration progressive, avec Auth et Companies/Contacts sur le port 8080 ;
-- `backend-python/` : API FastAPI historique, toujours utilisée par le frontend sur le port 8000 ;
+- `backend-python/` : API FastAPI historique conservée temporairement comme référence de compatibilité ;
 - `frontend/` : Next.js, TypeScript et App Router ;
 - `storage/` : CV et documents générés, exclus de Git ;
 - `docs/` : documentation fonctionnelle, technique et d'exploitation.
@@ -33,9 +33,8 @@ Demo credentials are not provided in the repository. Define your own values befo
 ## URLs par défaut
 
 - Frontend : http://localhost:3000
-- API : http://localhost:8000
-- OpenAPI : http://localhost:8000/docs
-- Santé : http://localhost:8000/health
+- API Spring : http://localhost:8080
+- Santé : http://localhost:8080/health
 - Santé Spring Boot (Phase 1) : http://localhost:8080/health
 
 ## Vérifications

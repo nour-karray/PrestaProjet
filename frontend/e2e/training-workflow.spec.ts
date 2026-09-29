@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
-const backendUrl = process.env.E2E_BACKEND_URL ?? "http://localhost:8000";
+const backendUrl = process.env.E2E_BACKEND_URL ?? "http://localhost:8080";
 const email = process.env.E2E_ADMIN_EMAIL;
 const password = process.env.E2E_ADMIN_PASSWORD;
 

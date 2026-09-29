@@ -15,7 +15,7 @@ export function getTrainer(id: string): Promise<Trainer> {
 }
 
 export function getTrainerCvUrl(id: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
   return `${baseUrl}/api/trainers/${id}/cv`;
 }
 

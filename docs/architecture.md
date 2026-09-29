@@ -4,8 +4,8 @@
 
 ```text
 Next.js / React / TypeScript
-        ↓ REST API :8000
-FastAPI historique (backend-python/)
+        ↓ REST API :8080
+Spring Boot (backend/)
         ↓
 MySQL 8.x
 
@@ -15,8 +15,8 @@ Spring Boot (backend/) :8080
         └── Companies / Contacts protégés
 ```
 
-Le frontend continue d'utiliser FastAPI pendant la migration. Le nouveau
-backend Spring Boot expose désormais l'authentification compatible FastAPI et
+Le frontend utilise désormais le backend Spring Boot. FastAPI reste conservé
+temporairement comme oracle de compatibilité et
 protège Companies/Contacts. Flyway, PDF et Ollama restent hors périmètre.
 
 ## Cible backend
@@ -55,7 +55,7 @@ sera introduit après stabilisation des entités avec une nouvelle baseline MySQ
 Les routes, statuts fonctionnels, champs JSON en `snake_case`, pagination,
 archivage logique, contact principal et enveloppes d'erreur reprennent FastAPI.
 La protection par JWT en cookies HttpOnly est active côté Spring. Le frontend
-reste néanmoins branché sur FastAPI `:8000` pendant cette phase de migration.
+est désormais branché sur Spring Boot `:8080`.
 
 ## Compatibilité
 

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 type HealthState = "loading" | "available" | "unavailable";
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export default function Home() {
   const [healthState, setHealthState] = useState<HealthState>("loading");
