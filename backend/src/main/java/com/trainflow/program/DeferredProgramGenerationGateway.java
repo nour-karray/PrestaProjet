@@ -1,2 +1,0 @@
-package com.trainflow.program; import com.trainflow.shared.error.ApiError; import java.util.UUID; import org.springframework.http.HttpStatus; import org.springframework.stereotype.Component;
-@Component public class DeferredProgramGenerationGateway implements ProgramGenerationGateway {public ProgramResponse generate(UUID id){throw new ApiError(HttpStatus.SERVICE_UNAVAILABLE,"AI_MIGRATION_PENDING","La génération Ollama sera activée avec le module IA.");}}

@@ -27,6 +27,16 @@ server:
   port: 8080
 
 trainflow:
+  ai:
+    base-url: ${LOCAL_LLM_URL:http://127.0.0.1:11434}
+    cv-model: ${CV_LLM_MODEL:qwen2.5:1.5b}
+    program-model: ${LOCAL_LLM_MODEL:qwen-prestacode-v3:latest}
+    cv-keep-alive: ${CV_LLM_KEEP_ALIVE:30s}
+    program-keep-alive: ${LOCAL_LLM_KEEP_ALIVE:1h}
+    cv-max-input-chars: ${CV_LLM_MAX_INPUT_CHARS:8000}
+    cv-max-tokens: ${CV_LLM_MAX_TOKENS:1024}
+    program-max-tokens: ${LOCAL_LLM_MAX_TOKENS:4096}
+    timeout-seconds: ${LOCAL_LLM_TIMEOUT_SECONDS:600}
   storage:
     cv-directory: ${CV_STORAGE_DIR:../storage/cvs}
     document-directory: ${DOCUMENT_STORAGE_PATH:../storage/documents}
