@@ -1,0 +1,2 @@
+package com.trainflow.trainingneed; import jakarta.validation.constraints.*; import java.math.BigDecimal; import java.time.LocalDate;
+public record TrainingNeedRequest(@Size(max=500)String targetAudience,TrainingNeedLevel level,@Size(max=300)String location,@Positive Integer participantCount,DeliveryMode deliveryMode,@DecimalMin("1") @Digits(integer=6,fraction=2) BigDecimal durationHours,@Min(1)@Max(10)Integer plannedDaysCount,String objectives,LocalDate desiredStartDate,LocalDate desiredEndDate,String constraints){}
