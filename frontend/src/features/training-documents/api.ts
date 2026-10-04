@@ -5,7 +5,7 @@ import type {
   TrainingDocument,
 } from "@/types/training-document";
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
 export const getTrainingDocuments = (caseId: string) =>
   apiRequest<TrainingDocument[]>(`/api/training-cases/${caseId}/documents`);

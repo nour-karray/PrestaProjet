@@ -7,9 +7,15 @@ export default defineConfig({
   workers: 1,
   reporter: "line",
   use: {
-    baseURL: process.env.E2E_FRONTEND_URL ?? "http://localhost:3000",
+    baseURL: process.env.E2E_FRONTEND_URL ?? "http://localhost:5173",
     channel: "chrome",
     headless: true,
     trace: "retain-on-failure",
+  },
+  webServer: {
+    command: "npm run dev -- --host 127.0.0.1",
+    url: process.env.E2E_FRONTEND_URL ?? "http://localhost:5173",
+    reuseExistingServer: true,
+    timeout: 120_000,
   },
 });

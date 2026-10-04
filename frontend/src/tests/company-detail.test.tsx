@@ -2,10 +2,11 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import CompanyDetailPage from "@/app/entreprises/[id]/page";
+import CompanyDetailPage from "@/pages/company-detail-page";
 import { renderWithQueryClient } from "@/tests/test-utils";
 
-vi.mock("next/navigation", () => ({
+vi.mock("@/router/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/router/navigation")>()),
   useParams: () => ({ id: "company-1" }),
   usePathname: () => "/entreprises/company-1",
   useRouter: () => ({ replace: vi.fn() }),

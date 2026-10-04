@@ -23,7 +23,7 @@ class CompanyServiceTest {
     @BeforeEach void setUp() { service = new CompanyService(companies, contacts); }
 
     @Test
-    void normalizesCompanyNameLikeFastApi() {
+    void normalizesCompanyName() {
         when(companies.existsByNameIgnoreCase("Alpha Conseil")).thenReturn(false);
         when(companies.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(contacts.findByCompanyIdOrderByPrimaryDescFullNameAsc(any())).thenReturn(List.of());

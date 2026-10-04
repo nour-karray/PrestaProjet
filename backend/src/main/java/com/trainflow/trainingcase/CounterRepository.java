@@ -1,2 +1,0 @@
-package com.trainflow.trainingcase; import org.springframework.data.jpa.repository.*; import org.springframework.data.repository.query.Param;
-public interface CounterRepository extends JpaRepository<TrainingCaseCounter,Integer>{@Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE) @Query("select c from TrainingCaseCounter c where c.year=:year") java.util.Optional<TrainingCaseCounter> locked(@Param("year")int year);}

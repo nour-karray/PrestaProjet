@@ -7,11 +7,10 @@ if not exist ".env" (
   exit /b 1
 )
 
-start "TrainFlow AI Backend Python" cmd /k call "%~dp0scripts\start-backend.cmd"
+start "TrainFlow AI Backend Spring" cmd /k call "%~dp0scripts\start-backend.cmd"
 start "TrainFlow AI Frontend" cmd /k call "%~dp0scripts\start-frontend.cmd"
 
-echo Backend  : http://localhost:8000
-echo Frontend : http://localhost:3000
-echo API Docs : http://localhost:8000/docs
-echo Spring Phase 1 : lancez manuellement backend\target\trainflow-backend-*.jar sur le port 8080
+echo Backend  : http://localhost:8080
+echo Frontend : http://localhost:5173
+echo Sante    : http://localhost:8080/health
 

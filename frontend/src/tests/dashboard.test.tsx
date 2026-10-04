@@ -1,10 +1,11 @@
 import { screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
-import DashboardPage from "@/app/tableau-de-bord/page";
+import DashboardPage from "@/pages/dashboard-page";
 import { renderWithQueryClient } from "@/tests/test-utils";
 
-vi.mock("next/navigation", () => ({
+vi.mock("@/router/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/router/navigation")>()),
   useRouter: () => ({ replace: vi.fn() }),
   usePathname: () => "/tableau-de-bord",
 }));

@@ -2,86 +2,53 @@
 
 **AI-assisted Training Management Platform**
 
-Application web de gestion du cycle de formation professionnelle :
-entreprises, contacts, dossiers, formateurs, besoins, programmes,
+TrainFlow AI gère le cycle complet d’une formation professionnelle : entreprises,
+contacts, formateurs et CV, dossiers, besoins, programmes assistés par IA,
 tarification et documents PDF.
 
-## Architecture
+## Architecture active
 
-- `backend/` : Spring Boot en migration progressive, avec Auth et Companies/Contacts sur le port 8080 ;
-- `backend-python/` : API FastAPI historique conservée temporairement comme référence de compatibilité ;
-- `frontend/` : Next.js, TypeScript et App Router ;
-- `storage/` : CV et documents générés, exclus de Git ;
-- `docs/` : documentation fonctionnelle, technique et d'exploitation.
+- `frontend/` : React, TypeScript et Vite, port 5173 ;
+- `backend/` : Spring Boot 3 / Java 21, port 8080 ;
+- MySQL 8 : persistance, migrations Flyway et validation Hibernate ;
+- Ollama : `qwen2.5:1.5b` pour les CV et `qwen2.5:3b` pour les programmes ;
+- `storage/` : CV et documents générés, contenu exclu de Git.
 
 ## Démarrage
 
-Le mode local sans Docker est le mode conseillé pour le développement Windows :
+1. Copier `.env.example` vers `.env` et renseigner les valeurs locales.
+2. Démarrer MySQL et Ollama.
+3. Exécuter `setup-local.cmd`, puis `start-local.cmd`.
+
+Documentation :
 
 - [Architecture](docs/architecture.md)
-- [Démarrage local sans Docker](docs/local-development.md)
-- [Démarrage avec Docker](docs/docker.md)
-- [Pipeline IA et CV](docs/ai-cv-pipeline.md)
-- [Migration MySQL](docs/mysql-migration.md)
+- [Développement local](docs/local-development.md)
+- [Pipeline IA](docs/ai-cv-pipeline.md)
+- [Sécurité](docs/security.md)
+- [Tests](docs/testing.md)
 
-Copiez d'abord `.env.example` vers `.env`, puis remplacez tous les marqueurs
-`<...>`. Aucun identifiant administrateur n'est fourni dans le dépôt. La création
-d'un compte de démonstration est facultative et nécessite explicitement
-`SEED_DEMO_DATA=true`, `DEMO_ADMIN_EMAIL` et `DEMO_ADMIN_PASSWORD`.
+Aucun identifiant administrateur n’est fourni. Les données de démonstration
+restent désactivées par défaut (`SEED_DEMO_DATA=false`).
+
 Demo credentials are not provided in the repository. Define your own values before enabling demo data seeding.
 
-## URLs par défaut
-
-- Frontend : http://localhost:3000
-- API Spring : http://localhost:8080
-- Santé : http://localhost:8080/health
-- Santé Spring Boot (Phase 1) : http://localhost:8080/health
-
 ## Vérifications
-
-Backend :
-
-```powershell
-cd backend-python
-.\.venv\Scripts\python.exe -m pytest -q
-.\.venv\Scripts\python.exe -m ruff check .
-.\.venv\Scripts\python.exe -m mypy app
-```
-
-Socle Spring Boot :
 
 ```powershell
 cd backend
 mvn test
 mvn package
-```
 
-Tests MySQL réels, uniquement sur une base dédiée dont le nom se termine
-par `_test` :
-
-```powershell
-$env:MYSQL_TEST_DATABASE_URL="mysql+pymysql://user:password@localhost:3306/trainflow_test?charset=utf8mb4"
-.\.venv\Scripts\python.exe -m pytest -q tests/integration_mysql
-```
-
-Frontend :
-
-```powershell
-cd frontend
+cd ..\frontend
 npm run lint
-npm test -- --run
+npm test
 npm run build
 npm run test:e2e
 ```
 
-Le test E2E exige `E2E_ADMIN_EMAIL` et `E2E_ADMIN_PASSWORD` ainsi qu'une
-application locale déjà démarrée.
+Le parcours E2E nécessite une application locale démarrée et les variables
+`E2E_ADMIN_EMAIL` et `E2E_ADMIN_PASSWORD` définies hors Git.
 
-## Sécurité et stabilisation
-
-- [Sécurité](docs/security.md)
-- [Archives techniques](docs/archive/)
-
-Les secrets, bases locales, environnements virtuels, dépendances, sorties de
-tests, CV et documents générés sont exclus de Git.
-
+Les secrets, bases locales, sorties de build, CV et documents générés sont
+exclus du dépôt.

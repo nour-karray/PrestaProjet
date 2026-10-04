@@ -1,6 +1,0 @@
-node_modules
-.next
-.npm-cache
-.pnpm-store
-npm-debug.log*
-

@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AppHeader, AppSidebar } from "@/components/app-shell";
 import { DataTableLayout, SuccessPageTemplate } from "@/components/templates";
 
-vi.mock("next/link", () => ({
+vi.mock("@/router/navigation", () => ({
   default: ({ children, href, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => <a href={String(href)} {...props}>{children}</a>,
 }));
 

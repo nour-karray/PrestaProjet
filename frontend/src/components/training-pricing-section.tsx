@@ -1,5 +1,3 @@
-"use client";
-
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
@@ -45,7 +43,6 @@ export function TrainingPricingSection({
   useEffect(() => {
     if (!query.data) return;
     // La réponse serveur remplace les calculs prévisionnels après chaque sauvegarde.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setValues(toInput(query.data));
   }, [query.data]);
 

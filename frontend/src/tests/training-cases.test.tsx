@@ -2,14 +2,15 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import TrainingCaseDetailPage from "@/app/dossiers/[id]/page";
-import NewTrainingCasePage from "@/app/dossiers/nouveau/page";
-import TrainingCasesPage from "@/app/dossiers/page";
+import TrainingCaseDetailPage from "@/pages/training-case-detail-page";
+import NewTrainingCasePage from "@/pages/new-training-case-page";
+import TrainingCasesPage from "@/pages/training-cases-page";
 import { renderWithQueryClient } from "@/tests/test-utils";
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
 
-vi.mock("next/navigation", () => ({
+vi.mock("@/router/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/router/navigation")>()),
   useParams: () => ({ id: "case-1" }),
   usePathname: () => "/dossiers",
   useRouter: () => ({ push: pushMock, replace: vi.fn() }),
@@ -67,7 +68,9 @@ describe("Gestion des dossiers", () => {
     await user.type(screen.getByRole("combobox", { name: /Entreprise/ }), "AB");
     expect(await screen.findByRole("option", { name: /ABC Conseil/ })).toBeInTheDocument();
     await user.click(screen.getByRole("option", { name: /ABC Conseil/ }));
-    await user.click(screen.getByRole("combobox", { name: /Personne/ }));
+    const contactCombobox = screen.getByRole("combobox", { name: /Personne/ });
+    await waitFor(() => expect(contactCombobox).toBeEnabled(), { timeout: 5_000 });
+    await user.click(contactCombobox);
     expect(await screen.findByRole("option", { name: /Contact principal/ })).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText("Thème"), "Management");
     expect(container.querySelectorAll("optgroup")).toHaveLength(0);

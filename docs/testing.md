@@ -1,21 +1,15 @@
-# Test strategy
+# Stratégie de test
 
-TrainFlow AI keeps the legacy FastAPI suite as a compatibility oracle until
-the Spring API cutover is complete.
+| Périmètre | Commande |
+| --- | --- |
+| Backend Spring | `cd backend && mvn test && mvn package` |
+| Frontend Vite | `cd frontend && npm run lint && npm test && npm run build` |
+| Parcours réel | `cd frontend && npm run test:e2e` |
 
-| Scope | Command | Purpose |
-| --- | --- | --- |
-| Spring backend | `cd backend && mvn verify` | Unit, MVC, security, storage, PDF and MySQL integration tests |
-| FastAPI reference | `cd backend-python && python -m pytest -q` | Detect behavioural regressions during migration |
-| Frontend | `cd frontend && npm run lint && npm test -- --run && npm run build` | Lint, component/API-contract tests and production build |
+Le parcours Playwright utilise Spring Boot, MySQL et Ollama réels. Il exige
+`E2E_ADMIN_EMAIL` et `E2E_ADMIN_PASSWORD` dans l’environnement local et couvre
+le cycle entreprise → contact → formateur/CV → dossier → besoin → programme IA
+→ tarification → PDF → clôture → archivage.
 
-The MySQL Testcontainers test is skipped automatically when Docker is not
-available. It must run in CI where Docker is provided. Tests never use the
-development database and no suite is allowed to create, alter or delete its
-tables.
-
-At the Phase 12 checkpoint the local results were:
-
-- Spring: 46 tests passed (the Docker-backed integration test may be skipped);
-- FastAPI compatibility suite: 170 passed, 1 skipped;
-- frontend: 49 passed, ESLint and Next.js production build successful.
+Les suites ne doivent jamais embarquer de secret ni modifier une base non dédiée
+à leur scénario.

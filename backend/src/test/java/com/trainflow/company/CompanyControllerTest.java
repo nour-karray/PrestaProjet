@@ -48,7 +48,7 @@ class CompanyControllerTest {
     }
 
     @Test
-    void acceptsFastApiSnakeCaseQueryParameters() throws Exception {
+    void acceptsSnakeCaseQueryParameters() throws Exception {
         when(service.list(null, null, null, true, 2, 25, "created_at", "desc"))
                 .thenReturn(new CompanyListResponse(List.of(), 0, 2, 25));
         mvc.perform(get("/api/companies")
@@ -74,7 +74,7 @@ class CompanyControllerTest {
     }
 
     @Test
-    void keepsFastApiStyleValidationEnvelope() throws Exception {
+    void keepsApiValidationEnvelope() throws Exception {
         mvc.perform(post("/api/companies").contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"   \"}"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))

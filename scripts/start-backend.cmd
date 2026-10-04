@@ -1,13 +1,12 @@
 @echo off
 setlocal
-cd /d "%~dp0..\backend-python"
+cd /d "%~dp0..\backend"
 
-if not exist ".venv\Scripts\python.exe" (
-  echo [ERREUR] Executez d'abord ..\setup-local.cmd depuis la racine.
+where mvn.cmd >nul 2>nul
+if errorlevel 1 (
+  echo [ERREUR] Maven est introuvable. Installez Maven 3.9 ou superieur.
   exit /b 1
 )
 
-".venv\Scripts\python.exe" -m app.db.seed
-if errorlevel 1 exit /b 1
-".venv\Scripts\python.exe" -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+call mvn.cmd spring-boot:run
 

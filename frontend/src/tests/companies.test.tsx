@@ -2,13 +2,14 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import CompaniesPage from "@/app/entreprises/page";
-import NewCompanyPage from "@/app/entreprises/nouvelle/page";
+import CompaniesPage from "@/pages/companies-page";
+import NewCompanyPage from "@/pages/new-company-page";
 import { renderWithQueryClient } from "@/tests/test-utils";
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
 
-vi.mock("next/navigation", () => ({
+vi.mock("@/router/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/router/navigation")>()),
   usePathname: () => "/entreprises",
   useRouter: () => ({ push: pushMock, replace: vi.fn() }),
 }));

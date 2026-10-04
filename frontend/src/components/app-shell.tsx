@@ -1,13 +1,10 @@
-"use client";
-
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
 import { Icon } from "@/components/ui";
 import { getCurrentAdministrator, logout } from "@/features/auth/api";
 import type { Administrator } from "@/types/auth";
+import Link, { usePathname, useRouter } from "@/router/navigation";
 
 type NavigationItem = {
   href: string;
@@ -100,7 +97,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const account = useQuery({ queryKey: ["auth", "me"], queryFn: getCurrentAdministrator, staleTime: 60_000, enabled: process.env.NODE_ENV !== "test" });
+  const account = useQuery({ queryKey: ["auth", "me"], queryFn: getCurrentAdministrator, staleTime: 60_000, enabled: import.meta.env.MODE !== "test" });
   const logoutMutation = useMutation({ mutationFn: logout, onSuccess: () => { queryClient.clear(); router.replace("/connexion"); } });
   return <main className={`app-layout ${collapsed ? "layout-collapsed" : ""}`}>
     {mobileOpen && <button className="sidebar-overlay" aria-label="Fermer le menu" onClick={() => setMobileOpen(false)} />}

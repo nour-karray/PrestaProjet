@@ -4,8 +4,8 @@ spring:
   application:
     name: TrainFlow AI
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:trainflow}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC}
-    username: ${MYSQL_USER:trainflow}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3307}/${MYSQL_DATABASE:trainflow}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC}
+    username: ${MYSQL_USER:}
     password: ${MYSQL_PASSWORD:}
   jpa:
     hibernate:
@@ -37,13 +37,14 @@ trainflow:
   ai:
     base-url: ${LOCAL_LLM_URL:http://127.0.0.1:11434}
     cv-model: ${CV_LLM_MODEL:qwen2.5:1.5b}
-    program-model: ${LOCAL_LLM_MODEL:qwen-prestacode-v3:latest}
+    program-model: ${LOCAL_LLM_MODEL:qwen2.5:3b}
     cv-keep-alive: ${CV_LLM_KEEP_ALIVE:30s}
-    program-keep-alive: ${LOCAL_LLM_KEEP_ALIVE:1h}
+    program-keep-alive: ${LOCAL_LLM_KEEP_ALIVE:0s}
+    program-context-tokens: ${LOCAL_LLM_CONTEXT_TOKENS:4096}
     cv-max-input-chars: ${CV_LLM_MAX_INPUT_CHARS:8000}
     cv-max-tokens: ${CV_LLM_MAX_TOKENS:1024}
-    program-max-tokens: ${LOCAL_LLM_MAX_TOKENS:4096}
-    timeout-seconds: ${LOCAL_LLM_TIMEOUT_SECONDS:600}
+    program-max-tokens: ${LOCAL_LLM_MAX_TOKENS:2048}
+    timeout-seconds: ${LOCAL_LLM_TIMEOUT_SECONDS:300}
   storage:
     cv-directory: ${CV_STORAGE_DIR:../storage/cvs}
     document-directory: ${DOCUMENT_STORAGE_PATH:../storage/documents}

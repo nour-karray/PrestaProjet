@@ -1,9 +1,7 @@
-"use client";
-
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/router/navigation";
 
 import {
   createTrainingNeed,
@@ -126,7 +124,6 @@ export function TrainingNeedSection({ caseId, onChanged }: { caseId: string; onC
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<RequiredNeedField, string>>>({});
   const notFound = query.error instanceof ApiError && query.error.status === 404;
 
-  /* eslint-disable react-hooks/set-state-in-effect -- server data resets the editable form */
   useEffect(() => {
     // La réponse serveur devient la nouvelle référence après création ou sauvegarde.
     if (query.data) {
@@ -134,7 +131,6 @@ export function TrainingNeedSection({ caseId, onChanged }: { caseId: string; onC
       setFieldErrors({});
     }
   }, [query.data]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["training-need", caseId] });

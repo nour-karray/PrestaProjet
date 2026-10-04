@@ -2,11 +2,12 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import TrainingCaseDetailPage from "@/app/dossiers/[id]/page";
+import TrainingCaseDetailPage from "@/pages/training-case-detail-page";
 import { calculateDesiredEndDate, TrainingNeedSection } from "@/components/training-need-section";
 import { renderWithQueryClient } from "@/tests/test-utils";
 
-vi.mock("next/navigation", () => ({
+vi.mock("@/router/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/router/navigation")>()),
   useParams: () => ({ id: "case-1" }),
   usePathname: () => "/dossiers/case-1",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -259,7 +260,7 @@ describe("Besoin du client", () => {
     expect(location).toHaveValue("Nouveau lieu");
   });
 
-  it("affiche le champ concerné quand FastAPI refuse une valeur", async () => {
+  it("affiche le champ concerné quand l’API refuse une valeur", async () => {
     const user = userEvent.setup();
     vi.stubGlobal(
       "fetch",

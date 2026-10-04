@@ -1,64 +1,34 @@
 # Architecture de TrainFlow AI
 
-## État transitoire — Phase 3
-
 ```text
-Next.js / React / TypeScript
-        ↓ REST API :8080
-Spring Boot (backend/)
-        ↓
-MySQL 8.x
-
-Spring Boot (backend/) :8080
-        ├── GET /health
-        ├── Auth / Security
-        └── Companies / Contacts protégés
+React / TypeScript / Vite :5173
+              ↓ REST + cookies JWT
+Spring Boot / Java 21 :8080
+       ├── MySQL 8 + Flyway
+       ├── stockage local des CV et documents
+       ├── PDFBox
+       └── Ollama :11434
+             ├── qwen2.5:1.5b (CV)
+             └── qwen2.5:3b (programmes)
 ```
 
-Le frontend utilise désormais le backend Spring Boot. FastAPI reste conservé
-temporairement comme oracle de compatibilité et
-protège Companies/Contacts. Flyway, PDF et Ollama restent hors périmètre.
+Le backend est un monolithe modulaire organisé sous `com.trainflow` : `auth`,
+`company`, `trainer`, `trainingcase`, `trainingneed`, `program`, `pricing`,
+`document`, `ai`, `security` et `shared`.
 
-## Cible backend
+Les contrôleurs portent HTTP, les services appliquent les règles métier, les
+repositories assurent la persistance et les DTO préservent les contrats REST.
+Les entités JPA ne sont pas exposées directement.
 
-Le backend cible est un monolithe modulaire Java 21 organisé par domaine :
+## Données et fichiers
 
-```text
-com.trainflow
-├── auth
-├── company
-├── trainer
-├── trainingcase
-├── trainingneed
-├── program
-├── pricing
-├── document
-├── ai
-├── security
-└── shared
-```
+MySQL est l’unique source de vérité. Flyway versionne le schéma et Hibernate le
+valide avec `ddl-auto=validate`. Les CV et PDF sont écrits sous `storage/`, hors
+Git ; leur métadonnée et leur empreinte restent persistées en base.
 
-Les contrôleurs portent HTTP, les services les règles métier, les repositories
-la persistance et les DTO les contrats REST. Les entités JPA ne seront pas
-exposées directement.
+## IA
 
-## MySQL
-
-MySQL est la nouvelle source de vérité. Spring mappe uniquement
-`administrators`, `companies` et `company_contacts`. Hibernate utilise `ddl-auto=validate`,
-`generate-ddl=false` et `spring.sql.init.mode=never` : aucune table ou migration
-n'est créée. Le schéma initial est fourni dans `database/mysql-init/`. Flyway
-sera introduit après stabilisation des entités avec une nouvelle baseline MySQL.
-
-## Compatibilité Companies / Contacts
-
-Les routes, statuts fonctionnels, champs JSON en `snake_case`, pagination,
-archivage logique, contact principal et enveloppes d'erreur reprennent FastAPI.
-La protection par JWT en cookies HttpOnly est active côté Spring. Le frontend
-est désormais branché sur Spring Boot `:8080`.
-
-## Compatibilité
-
-Les routes, structures JSON en `snake_case`, cookies et codes d'erreur FastAPI
-sont conservés progressivement. Aucun domaine autre que l'authentification et
-Companies/Contacts n'est exposé par Spring pendant cette phase.
+Spring extrait le texte des PDF/DOCX, appelle Ollama et valide le JSON avant
+toute persistance. La génération de programme suit la même règle : lecture
+courte, appel IA hors transaction, validation stricte, puis transaction courte.
+Aucun composant Python n’est requis au runtime.

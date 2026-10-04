@@ -2,14 +2,15 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import LoginPage from "@/app/connexion/page";
+import LoginPage from "@/pages/login-page";
 import { renderWithQueryClient } from "@/tests/test-utils";
 
 const { replaceMock } = vi.hoisted(() => ({
   replaceMock: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({
+vi.mock("@/router/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/router/navigation")>()),
   useRouter: () => ({
     replace: replaceMock,
   }),

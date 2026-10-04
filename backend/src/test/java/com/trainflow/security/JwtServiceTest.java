@@ -22,12 +22,12 @@ class JwtServiceTest {
         assertEquals("INVALID_TOKEN_TYPE", error.getCode());
     }
 
-    @Test void invalidTokenKeepsFastApiErrorCode() {
+    @Test void invalidTokenKeepsApiErrorCode() {
         ApiError error = assertThrows(ApiError.class, () -> jwt.decodeAccessToken("invalid-token"));
         assertEquals("INVALID_TOKEN", error.getCode());
     }
 
-    @Test void expiredTokenKeepsFastApiErrorCode() {
+    @Test void expiredTokenKeepsApiErrorCode() {
         JwtService expiredJwt = new JwtService(SECRET, "HS256", -1, 7);
         ApiError error = assertThrows(ApiError.class,
                 () -> expiredJwt.decodeAccessToken(expiredJwt.createAccessToken(UUID.randomUUID())));

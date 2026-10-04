@@ -27,7 +27,7 @@ public class JwtService {
                       @Value("${trainflow.jwt.algorithm:HS256}") String algorithm,
                       @Value("${trainflow.jwt.access-token-expire-minutes:30}") long accessMinutes,
                       @Value("${trainflow.jwt.refresh-token-expire-days:7}") long refreshDays) {
-        if (!"HS256".equals(algorithm)) throw new IllegalStateException("JWT_ALGORITHM doit être HS256 pour rester compatible avec FastAPI.");
+        if (!"HS256".equals(algorithm)) throw new IllegalStateException("JWT_ALGORITHM doit être HS256.");
         if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) throw new IllegalStateException("JWT_SECRET doit contenir au moins 32 octets.");
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessLifetime = Duration.ofMinutes(accessMinutes);

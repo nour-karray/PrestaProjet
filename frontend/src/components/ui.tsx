@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/router/navigation";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 export function Icon({

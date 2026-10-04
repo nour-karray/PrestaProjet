@@ -1,7 +1,5 @@
-"use client";
-
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
+import Link from "@/router/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -88,7 +86,6 @@ export function TrainingProgramSection({
   useEffect(() => {
     if (!query.data) return;
     // La version renvoyée par l’API reste la référence après chaque action.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMetadata({
       title: query.data.title,
       general_objectives: query.data.general_objectives ?? "",
@@ -113,7 +110,7 @@ export function TrainingProgramSection({
     },
   });
   const program = query.data;
-  const editable = program ? !program.is_submitted && !program.is_validated : false;
+  const editable = program ? !program.is_submitted && !program.is_validated && !action.isPending : false;
   const selectedItem = useMemo(
     () => (program ? findItem(program, selectedItemId) : null),
     [program, selectedItemId],
@@ -122,7 +119,6 @@ export function TrainingProgramSection({
   useEffect(() => {
     if (!selectedItem) return;
     // La sélection d’un nœud initialise l’éditeur avec sa valeur serveur.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setItemInput({
       item_type: selectedItem.item_type,
       parent_id: selectedItem.parent_id,
@@ -392,8 +388,8 @@ export function TrainingProgramSection({
       <div className="mt-5 flex flex-wrap justify-end gap-3">
         {editable && (
           <>
-            <button type="button" onClick={() => action.mutate(() => updateTrainingProgram(caseId, metadata))} className="btn btn-secondary">Enregistrer le brouillon</button>
-            <button type="button" onClick={() => action.mutate(() => submitTrainingProgram(caseId))} className="btn btn-primary px-5">Soumettre pour validation</button>
+            <button type="button" disabled={action.isPending} onClick={() => action.mutate(() => updateTrainingProgram(caseId, metadata))} className="btn btn-secondary">{action.isPending ? "Enregistrement…" : "Enregistrer le brouillon"}</button>
+            <button type="button" disabled={action.isPending} onClick={() => action.mutate(() => submitTrainingProgram(caseId))} className="btn btn-primary px-5">{action.isPending ? "Traitement…" : "Soumettre pour validation"}</button>
           </>
         )}
         {program.is_submitted && !program.is_validated && (
@@ -407,7 +403,7 @@ export function TrainingProgramSection({
             />
             <button
               type="button"
-              disabled={!returnReason.trim()}
+              disabled={!returnReason.trim() || action.isPending}
               onClick={() => action.mutate(() => returnTrainingProgram(caseId, returnReason))}
               className="rounded-md border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-800"
             >
@@ -415,6 +411,7 @@ export function TrainingProgramSection({
             </button>
             <button
               type="button"
+              disabled={action.isPending}
               onClick={() => action.mutate(() => validateTrainingProgram(caseId))}
               className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white"
             >
@@ -749,9 +746,18 @@ function NumberField({
 }
 
 function ErrorMessage({ error }: { error: unknown }) {
+  const message = error instanceof ApiError
+    ? ({
+        LLM_TIMEOUT: "La génération IA a dépassé le délai autorisé. Réessayez lorsque la machine est moins chargée.",
+        LLM_UNAVAILABLE: "Le service Ollama est indisponible. Vérifiez qu’Ollama est démarré puis réessayez.",
+        LLM_INVALID_JSON: "Le modèle a retourné un JSON invalide. Aucun programme n’a été enregistré.",
+        LLM_INVALID_RESPONSE: "Le programme proposé par l’IA est incomplet ou incohérent. Aucun programme n’a été enregistré.",
+        LLM_BUSY: "Une génération est déjà en cours. Attendez sa fin avant de réessayer.",
+      } as Record<string, string>)[error.code] ?? error.message
+    : "L’action a échoué.";
   return (
     <p role="alert" className="mt-4 text-sm text-red-700">
-      {error instanceof ApiError ? error.message : "L’action a échoué."}
+      {message}
     </p>
   );
 }

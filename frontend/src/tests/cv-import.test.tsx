@@ -2,10 +2,11 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import ImportCvPage from "@/app/formateurs/import-cv/page";
+import ImportCvPage from "@/pages/import-cv-page";
 import { renderWithQueryClient } from "@/tests/test-utils";
 
-vi.mock("next/navigation", () => ({
+vi.mock("@/router/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/router/navigation")>()),
   usePathname: () => "/formateurs/import-cv",
   useRouter: () => ({ replace: vi.fn() }),
   useSearchParams: () => new URLSearchParams("case_id=case-1"),
