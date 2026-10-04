@@ -1,0 +1,60 @@
+spring:
+  config:
+    import: optional:file:../.env[.properties]
+  application:
+    name: TrainFlow AI
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3307}/${MYSQL_DATABASE:trainflow}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC}
+    username: ${MYSQL_USER:}
+    password: ${MYSQL_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    generate-ddl: false
+    open-in-view: false
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    baseline-on-migrate: true
+    baseline-version: "20260923.0017"
+    baseline-description: "Existing TrainFlow MySQL schema"
+    locations: classpath:db/migration
+    validate-migration-naming: true
+  sql:
+    init:
+      mode: never
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: always
+  servlet:
+    multipart:
+      max-file-size: ${MAX_CV_FILE_SIZE_MB:10}MB
+      max-request-size: ${MAX_CV_FILE_SIZE_MB:10}MB
+
+server:
+  port: 8080
+
+trainflow:
+  ai:
+    base-url: ${LOCAL_LLM_URL:http://127.0.0.1:11434}
+    cv-model: ${CV_LLM_MODEL:qwen2.5:1.5b}
+    program-model: ${LOCAL_LLM_MODEL:qwen2.5:3b}
+    cv-keep-alive: ${CV_LLM_KEEP_ALIVE:30s}
+    program-keep-alive: ${LOCAL_LLM_KEEP_ALIVE:0s}
+    program-context-tokens: ${LOCAL_LLM_CONTEXT_TOKENS:4096}
+    cv-max-input-chars: ${CV_LLM_MAX_INPUT_CHARS:8000}
+    cv-max-tokens: ${CV_LLM_MAX_TOKENS:1024}
+    program-max-tokens: ${LOCAL_LLM_MAX_TOKENS:2048}
+    timeout-seconds: ${LOCAL_LLM_TIMEOUT_SECONDS:300}
+  storage:
+    cv-directory: ${CV_STORAGE_DIR:../storage/cvs}
+    document-directory: ${DOCUMENT_STORAGE_PATH:../storage/documents}
+    max-document-size-mb: ${DOCUMENT_MAX_SIZE_MB:10}
+    max-cv-file-size-mb: ${MAX_CV_FILE_SIZE_MB:10}
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  auth-cookie-secure: ${AUTH_COOKIE_SECURE:false}
+  auth-cookie-same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
+  jwt:
+    secret: ${JWT_SECRET}
+    algorithm: ${JWT_ALGORITHM:HS256}
+    access-token-expire-minutes: ${ACCESS_TOKEN_EXPIRE_MINUTES:30}
+    refresh-token-expire-days: ${REFRESH_TOKEN_EXPIRE_DAYS:7}

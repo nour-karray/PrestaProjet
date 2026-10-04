@@ -8,35 +8,15 @@ if not exist ".env" (
   exit /b 1
 )
 
-if not exist "backend\.venv\Scripts\python.exe" (
-  python -m venv "backend\.venv"
-  if errorlevel 1 exit /b 1
-)
-
 echo Installation du backend...
-"backend\.venv\Scripts\python.exe" -m pip install --upgrade pip
-if errorlevel 1 exit /b 1
-"backend\.venv\Scripts\python.exe" -m pip install -e "backend[dev]"
+call mvn.cmd -f backend\pom.xml package -DskipTests
 if errorlevel 1 exit /b 1
 
 echo Installation du frontend...
 call npm.cmd --prefix frontend install
 if errorlevel 1 exit /b 1
 
-echo Migration de la base...
-pushd backend
-".venv\Scripts\python.exe" -m alembic upgrade head
-if errorlevel 1 (
-  popd
-  exit /b 1
-)
-".venv\Scripts\python.exe" -m app.db.seed
-if errorlevel 1 (
-  popd
-  exit /b 1
-)
-popd
-
 echo.
 echo Installation locale terminee. Lancez ensuite : start-local.cmd
+echo Spring Boot appliquera les migrations Flyway sur la base MySQL configuree.
 

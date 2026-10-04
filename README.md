@@ -1,72 +1,54 @@
-# Gestion des formations professionnelles
+# TrainFlow AI
 
-Application web de gestion du cycle de formation professionnelle :
-entreprises, contacts, dossiers, formateurs, besoins, programmes,
+**AI-assisted Training Management Platform**
+
+TrainFlow AI gère le cycle complet d’une formation professionnelle : entreprises,
+contacts, formateurs et CV, dossiers, besoins, programmes assistés par IA,
 tarification et documents PDF.
 
-## Architecture
+## Architecture active
 
-- `backend/` : API FastAPI, SQLAlchemy, Alembic et PostgreSQL ;
-- `frontend/` : Next.js, TypeScript et App Router ;
-- `storage/` : CV et documents générés, exclus de Git ;
-- `docs/` : documentation fonctionnelle, technique et d'exploitation.
+- `frontend/` : React, TypeScript et Vite, port 5173 ;
+- `backend/` : Spring Boot 3 / Java 21, port 8080 ;
+- MySQL 8 : persistance, migrations Flyway et validation Hibernate ;
+- Ollama : `qwen2.5:1.5b` pour les CV et `qwen2.5:3b` pour les programmes ;
+- `storage/` : CV et documents générés, contenu exclu de Git.
 
 ## Démarrage
 
-Le mode local sans Docker est le mode conseillé pour le développement Windows :
+1. Copier `.env.example` vers `.env` et renseigner les valeurs locales.
+2. Démarrer MySQL et Ollama.
+3. Exécuter `setup-local.cmd`, puis `start-local.cmd`.
 
-- [Démarrage local sans Docker](docs/DEMARRAGE_LOCAL.md)
-- [Démarrage avec Docker](docs/DEMARRAGE_DOCKER.md)
+Documentation :
 
-Copiez d'abord `.env.example` vers `.env`, puis remplacez tous les marqueurs
-`<...>`. Aucun identifiant administrateur n'est fourni dans le dépôt. La création
-d'un compte de démonstration est facultative et nécessite explicitement
-`SEED_DEMO_DATA=true`, `DEMO_ADMIN_EMAIL` et `DEMO_ADMIN_PASSWORD`.
+- [Architecture](docs/architecture.md)
+- [Développement local](docs/local-development.md)
+- [Pipeline IA](docs/ai-cv-pipeline.md)
+- [Sécurité](docs/security.md)
+- [Tests](docs/testing.md)
 
-## URLs par défaut
+Aucun identifiant administrateur n’est fourni. Les données de démonstration
+restent désactivées par défaut (`SEED_DEMO_DATA=false`).
 
-- Frontend : http://localhost:3000
-- API : http://localhost:8000
-- OpenAPI : http://localhost:8000/docs
-- Santé : http://localhost:8000/health
+Demo credentials are not provided in the repository. Define your own values before enabling demo data seeding.
 
 ## Vérifications
 
-Backend :
-
 ```powershell
 cd backend
-.\.venv\Scripts\python.exe -m pytest -q
-.\.venv\Scripts\python.exe -m ruff check .
-.\.venv\Scripts\python.exe -m mypy app
-```
+mvn test
+mvn package
 
-Tests PostgreSQL réels, uniquement sur une base dédiée dont le nom se termine
-par `_test` :
-
-```powershell
-$env:POSTGRES_TEST_DATABASE_URL="postgresql+psycopg://user:password@localhost:5432/prestacode_test"
-.\.venv\Scripts\python.exe -m pytest -q tests/integration_postgres
-```
-
-Frontend :
-
-```powershell
-cd frontend
+cd ..\frontend
 npm run lint
-npm test -- --run
+npm test
 npm run build
 npm run test:e2e
 ```
 
-Le test E2E exige `E2E_ADMIN_EMAIL` et `E2E_ADMIN_PASSWORD` ainsi qu'une
-application locale déjà démarrée.
+Le parcours E2E nécessite une application locale démarrée et les variables
+`E2E_ADMIN_EMAIL` et `E2E_ADMIN_PASSWORD` définies hors Git.
 
-## Sécurité et stabilisation
-
-- [Phase de stabilisation](docs/PHASE_STABILISATION.md)
-- [Audit de sécurité](docs/STABILISATION_SECURITE.md)
-
-Les secrets, bases locales, environnements virtuels, dépendances, sorties de
-tests, CV et documents générés sont exclus de Git.
-
+Les secrets, bases locales, sorties de build, CV et documents générés sont
+exclus du dépôt.

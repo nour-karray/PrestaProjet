@@ -1,0 +1,20 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    generate-ddl: false
+    open-in-view: false
+  sql:
+    init:
+      mode: never
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+trainflow:
+  frontend-url: http://localhost:3000
+  auth-cookie-secure: false
+  auth-cookie-same-site: Lax
+  jwt:
+    secret: TestOnly-JwtSecret-AtLeast-32-Characters-Long
+    algorithm: HS256
+    access-token-expire-minutes: 30
+    refresh-token-expire-days: 7

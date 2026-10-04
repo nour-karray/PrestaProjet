@@ -1,5 +1,3 @@
-"use client";
-
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
@@ -45,7 +43,6 @@ export function TrainingPricingSection({
   useEffect(() => {
     if (!query.data) return;
     // La réponse serveur remplace les calculs prévisionnels après chaque sauvegarde.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setValues(toInput(query.data));
   }, [query.data]);
 
@@ -231,7 +228,7 @@ export function TrainingPricingSection({
       </div>
 
       <p className="mt-4 rounded-md bg-amber-50 p-3 text-xs text-amber-900">
-        Vérifiez l’applicabilité fiscale du taux sélectionné. PrestaCode ne fournit
+        Vérifiez l’applicabilité fiscale du taux sélectionné. TrainFlow AI ne fournit
         aucun conseil fiscal et ne détermine pas le régime applicable.
       </p>
       {pricing.return_reason && !pricing.is_submitted && (

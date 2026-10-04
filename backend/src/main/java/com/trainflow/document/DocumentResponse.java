@@ -1,0 +1,3 @@
+package com.trainflow.document;
+import java.time.Instant; import java.util.UUID;
+public record DocumentResponse(UUID id,UUID trainingCaseId,DocumentType documentType,DocumentStatus status,String displayName,String originalFilename,String mimeType,Long fileSize,String sha256,String generationError,Instant generatedAt,Instant createdAt,Instant updatedAt){static DocumentResponse from(TrainingDocument d){return new DocumentResponse(d.getId(),d.getTrainingCaseId(),d.getDocumentType(),d.getStatus(),d.getDisplayName(),d.getOriginalFilename(),d.getMimeType(),d.getFileSize(),d.getSha256(),d.getGenerationError(),d.getGeneratedAt(),d.getCreatedAt(),d.getUpdatedAt());}}

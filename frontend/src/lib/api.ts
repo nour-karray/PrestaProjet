@@ -1,6 +1,6 @@
 import type { ApiErrorPayload } from "@/types/auth";
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
 export class ApiError extends Error {
   constructor(

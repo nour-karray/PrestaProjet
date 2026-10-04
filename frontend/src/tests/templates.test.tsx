@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AppHeader, AppSidebar } from "@/components/app-shell";
 import { DataTableLayout, SuccessPageTemplate } from "@/components/templates";
 
-vi.mock("next/link", () => ({
+vi.mock("@/router/navigation", () => ({
   default: ({ children, href, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => <a href={String(href)} {...props}>{children}</a>,
 }));
 
@@ -18,7 +18,7 @@ const administrator = {
   last_login_at: null,
 };
 
-describe("Templates Formation Center", () => {
+describe("Templates TrainFlow AI", () => {
   it("ouvre directement la liste depuis le lien Dossiers", () => {
     render(<AppSidebar pathname="/dossiers/nouveau" open collapsed={false} administrator={administrator} onClose={vi.fn()} onToggleCollapse={vi.fn()} />);
     expect(screen.getByRole("link", { name: "Dossiers" })).toHaveAttribute("href", "/dossiers");

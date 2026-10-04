@@ -1,0 +1,2 @@
+package com.trainflow.trainingneed; import java.math.BigDecimal; import java.time.*; import java.util.UUID;
+public record TrainingNeedResponse(UUID id,UUID trainingCaseId,String targetAudience,TrainingNeedLevel level,String location,Integer participantCount,DeliveryMode deliveryMode,BigDecimal durationHours,Integer plannedDaysCount,String objectives,LocalDate desiredStartDate,LocalDate desiredEndDate,String constraints,boolean isValidated,Instant validatedAt,Instant createdAt,Instant updatedAt){}

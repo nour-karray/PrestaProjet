@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import TrainersPage from "@/app/formateurs/page";
+import TrainersPage from "@/pages/trainers-page";
 import { renderWithQueryClient } from "@/tests/test-utils";
 
 const { navigationState, pushMock } = vi.hoisted(() => ({
@@ -10,7 +10,8 @@ const { navigationState, pushMock } = vi.hoisted(() => ({
   pushMock: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({
+vi.mock("@/router/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/router/navigation")>()),
   usePathname: () => "/formateurs",
   useRouter: () => ({ push: pushMock, replace: vi.fn() }),
   useSearchParams: () => new URLSearchParams(navigationState.query),

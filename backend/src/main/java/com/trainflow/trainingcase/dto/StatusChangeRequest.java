@@ -1,0 +1,1 @@
+package com.trainflow.trainingcase.dto; import com.trainflow.trainingcase.TrainingCaseStatus; import jakarta.validation.constraints.NotNull; public record StatusChangeRequest(@NotNull TrainingCaseStatus status){}

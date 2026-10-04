@@ -1,0 +1,1 @@
+package com.trainflow.program; import java.util.*; import org.springframework.data.jpa.repository.JpaRepository; public interface TrainingProgramDayRepository extends JpaRepository<TrainingProgramDay,UUID>{}

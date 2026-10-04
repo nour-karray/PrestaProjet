@@ -1,5 +1,3 @@
-"use client";
-
 import type { InputHTMLAttributes, ReactNode } from "react";
 
 import { Icon } from "@/components/ui";

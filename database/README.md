@@ -1,40 +1,31 @@
-# Base PostgreSQL portable
+# Base MySQL portable
 
-Le fichier `prestacode-schema.sql` contient la structure complète de PostgreSQL.
-`alembic-version.sql` conserve la version des migrations. Les données de
-démonstration sont générées par le script officiel du projet. Aucun texte de CV,
-document stocké, mot de passe local ou renseignement personnel n’est publié.
+Le schéma courant de TrainFlow AI est géré par Flyway dans
+`backend/src/main/resources/db/migration/`. Il cible MySQL 8.x, utilise
+`CHAR(36)` pour les UUID, `JSON`, `DECIMAL` et des timestamps UTC en
+`DATETIME(6)`.
 
-## Restauration
-
-Créer une base vide puis exécuter :
-
-```powershell
-psql -h localhost -U prestacode -d prestacode -f database\prestacode-schema.sql
-psql -h localhost -U prestacode -d prestacode -f database\alembic-version.sql
-```
-
-Générer ensuite les données de démonstration :
+Pour initialiser une base locale vide, définissez les variables MySQL puis
+démarrez le backend Spring Boot :
 
 ```powershell
-cd backend
-$env:SEED_DEMO_DATA="true"
-$env:DEMO_ADMIN_EMAIL="admin@formation.local"
-$env:DEMO_ADMIN_PASSWORD="Admin123!"
-.\.venv\Scripts\python.exe -m app.db.seed
+$env:MYSQL_HOST="127.0.0.1"
+$env:MYSQL_PORT="3307"
+$env:MYSQL_DATABASE="trainflow"
+$env:MYSQL_USER="<your-local-user>"
+$env:MYSQL_PASSWORD="<your-local-password>"
+mvn -f backend/pom.xml spring-boot:run
 ```
 
-Le compte généré est :
+Le dossier `archive/` conserve les exports PostgreSQL historiques. Ils ne sont
+pas exécutés par l'application et ne doivent pas être importés dans MySQL.
 
-- email : `admin@formation.local`
-- mot de passe : `Admin123!`
+Pour conserver les données existantes, suivez
+[`docs/mysql-migration.md`](../docs/mysql-migration.md) et utilisez le script de
+copie non destructif avant d'arrêter l'ancienne base.
 
-Pour appliquer de futures migrations après restauration :
-
-```powershell
-cd backend
-.\.venv\Scripts\python.exe -m alembic upgrade head
-```
-
-Les fichiers `.env`, `storage/`, les CV originaux et les documents générés ne
-doivent pas être publiés dans le dépôt.
+Flyway est actif dans le backend Spring avec une baseline non destructive à la
+version `20260923.0017`. Une base vide reçoit le schéma complet via la migration
+de baseline. Une installation historique non vide est marquée à cette version :
+aucune table métier n'est recréée. Hibernate reste configuré exclusivement avec
+`ddl-auto=validate`.

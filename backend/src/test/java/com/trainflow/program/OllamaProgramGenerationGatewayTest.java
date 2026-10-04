@@ -1,0 +1,12 @@
+package com.trainflow.program;
+import static org.assertj.core.api.Assertions.*; import static org.mockito.Mockito.*; import com.trainflow.ai.OllamaClient; import java.util.*; import org.junit.jupiter.api.Test; import org.mockito.ArgumentCaptor;
+class OllamaProgramGenerationGatewayTest {
+ @Test void usesStructuredOutputsAndBuildsStructureAndDurationsInBackend(){OllamaClient client=mock(OllamaClient.class);when(client.generateJson(anyString(),anyString(),anyString(),anyInt(),anyInt(),any())).thenReturn(
+  Map.of("title","Cybersecurity","general_objectives","Secure email","prerequisites","None","evaluation_method","Case study"),
+  Map.of("title","Threat awareness","contents",List.of(item("Phishing",List.of("EXPOSE")),item("Protection",List.of("EXERCICE_PRATIQUE")))));
+  var trainer=new ProgramGenerationInput.TrainerProfile("Amina",List.of("Security"),List.of("IT"),10,List.of("ISO 27001"));var input=new ProgramGenerationInput(UUID.randomUUID(),"Cybersecurity","Beginners","Secure email",1,420,trainer);var gateway=new OllamaProgramGenerationGateway(client,"qwen2.5:3b","0s",2048,4096);Map<String,Object> result=gateway.generate(input);
+  ArgumentCaptor<String> prompts=ArgumentCaptor.forClass(String.class);ArgumentCaptor<String> keepAlives=ArgumentCaptor.forClass(String.class);verify(client,times(2)).generateJson(eq("qwen2.5:3b"),prompts.capture(),keepAlives.capture(),anyInt(),eq(4096),argThat(format->format instanceof Map));assertThat(prompts.getAllValues()).allMatch(prompt->!OllamaProgramGenerationGateway.hasUnresolvedPlaceholder(prompt)&&!prompt.contains("raw_text")&&!prompt.contains("storage_filename"));assertThat(keepAlives.getAllValues()).containsExactly("30s","0s");
+  List<?> generatedDays=(List<?>)result.get("days");Map<?,?> day=(Map<?,?>)generatedDays.getFirst();List<?> contents=(List<?>)day.get("contents");assertThat(day.get("day_number")).isEqualTo(1);assertThat(((Map<?,?>)contents.get(0)).get("order_index")).isEqualTo(1);assertThat(contents).allSatisfy(value->{Map<?,?> module=(Map<?,?>)value;assertThat((int)module.get("theory_minutes")+(int)module.get("practice_minutes")).isEqualTo(210);});}
+ @Test void detectsUnresolvedPromptPlaceholder(){assertThat(OllamaProgramGenerationGateway.hasUnresolvedPlaceholder("Theme: {theme}")).isTrue();assertThat(OllamaProgramGenerationGateway.hasUnresolvedPlaceholder("Theme: Cybersecurity")).isFalse();}
+ private Map<String,Object> item(String title,List<String> methods){return Map.of("title",title,"concepts",List.of("a","b","c","d"),"methods",methods);}
+}
